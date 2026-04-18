@@ -5,7 +5,6 @@ import fs from 'fs'
 import path from 'path'
 import pino from 'pino'
 import chalk from 'chalk'
-import { fileURLToPath } from 'url'
 
 const {
     useMultiFileAuthState,
@@ -18,30 +17,37 @@ const {
     default: makeWASocket
 } = pkg
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-
 const imagenSerBot = 'https://files.catbox.moe/gptlxc.jpg'
 
-const mensajeQR = `╭─[ 🤖 *${global.namebot || 'Asta Bot'}* ]─╮
+const mensajeQR = `╭─〔 💻 𝘼𝙎𝙏𝘼 𝘽𝙊𝙏 • 𝙈𝙊𝘿𝙊 𝙌𝙍 〕─╮
 │
-│  📷 *ESCANEA EL QR*
+│  📲 Escanea este *QR* desde otro celular o PC
+│  para convertirte en un *Sub-Bot* de Asta.
 │
-│  📱 *Instrucciones:*
+│  1️⃣  Pulsa los ⋮ tres puntos arriba a la derecha
+│  2️⃣  Ve a *Dispositivos vinculados*
+│  3️⃣  Escanea el QR y ¡listo! ⚡
 │
-│  1️⃣  Abre WhatsApp
-│  2️⃣  ⋮ → *Dispositivos vinculados*
-│  3️⃣  *Vincular dispositivo*
-│  4️⃣  Escanea este código QR
-│
-│  ⏳  Expira en *45 segundos*
-│
-╰──────────────────────────╯`
+│  ⏳  *Expira en 45 segundos.*
+╰───────────────────────`
 
-if (!global.subBots) global.subBots = new Map()
-if (!global.subBotsData) global.subBotsData = new Map()
+const mensajeCode = `╭─[ 💻 𝘼𝙎𝙏𝘼 𝘽𝙊𝙏 • 𝙈𝙊𝘿𝙊 𝘾𝙊𝘿𝙀 ]─╮
+│
+│  🧠  Este es el *Modo CODE* de Asta Bot.
+│  Ingresa el código desde otro celular o PC
+│  para convertirte en un *Sub-Bot*.
+│
+│  1️⃣  Pulsa los ⋮ tres puntos arriba a la derecha
+│  2️⃣  Entra en *Dispositivos vinculados*
+│  3️⃣  Selecciona *Vincular con código de 8 dígitos*
+│  4️⃣  Ingresa el código que aparecerá a continuación
+│
+│  ⏳  *Expira en 60 segundos.*
+╰────────────────────────╯`
+
+if (!global.conns || !Array.isArray(global.conns)) global.conns = []
+if (!global.activeSubBots) global.activeSubBots = new Map()
 if (!global.sentCodes) global.sentCodes = new Map()
-if (!global.subBotReconnectAttempts) global.subBotReconnectAttempts = new Map()
 
 const SUBBOT_FOLDER = './sessions/subbots'
 
@@ -53,34 +59,32 @@ function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-function isSubBotConnected(userId) {
-    const targetId = normalize(userId)
-    return global.subBots.has(targetId) && global.subBots.get(targetId)?.ws?.readyState === 1
+function isSubBotConnected(jid) {
+    if (!global.conns || !Array.isArray(global.conns)) return false
+    const targetJid = jid.split('@')[0]
+    return global.conns.some(sock => {
+        try {
+            if (!sock || !sock.user || !sock.user.jid) return false
+            const sockId = sock.user.jid.split('@')[0]
+            return sockId === targetJid && sock.ws && sock.ws.readyState === 1
+        } catch { return false }
+    })
 }
 
 async function sendCodeCopyButton(conn, jid, code, botName, quoted) {
     const interactiveMessage = {
-        body: {
-            text: '📋 Presiona el botón para copiar tu código'
-        },
-        footer: {
-            text: botName
-        },
-        header: {
-            title: code,
-            hasMediaAttachment: false
-        },
+        body: { text: '📋 Presiona el botón para copiar tu código' },
+        footer: { text: botName },
+        header: { title: code, hasMediaAttachment: false },
         nativeFlowMessage: {
-            buttons: [
-                {
-                    name: 'cta_copy',
-                    buttonParamsJson: JSON.stringify({
-                        display_text: '📋 Copiar código',
-                        copy_code: code,
-                        id: `copy_${Date.now()}`
-                    })
-                }
-            ],
+            buttons: [{
+                name: 'cta_copy',
+                buttonParamsJson: JSON.stringify({
+                    display_text: '📋 Copiar código',
+                    copy_code: code,
+                    id: `copy_${Date.now()}`
+                })
+            }],
             messageParamsJson: ''
         }
     }
@@ -88,10 +92,7 @@ async function sendCodeCopyButton(conn, jid, code, botName, quoted) {
     const messageContent = proto.Message.fromObject({
         viewOnceMessage: {
             message: {
-                messageContextInfo: {
-                    deviceListMetadata: {},
-                    deviceListMetadataVersion: 2
-                },
+                messageContextInfo: { deviceListMetadata: {}, deviceListMetadataVersion: 2 },
                 interactiveMessage
             }
         }
@@ -107,87 +108,34 @@ async function sendCodeCopyButton(conn, jid, code, botName, quoted) {
     return msg
 }
 
-async function sendReply(conn, jid, text, quoted) {
-    return conn.sendMessage(jid, { text }, { quoted })
-}
-
-async function cleanSubBotCache(sessionPath) {
-    try {
-        const filesToClean = [
-            'pre-key-store.json', 'sender-key-store.json',
-            'session-store.json', 'app-state-sync-key-store.json'
-        ]
-        for (const file of filesToClean) {
-            const fp = path.join(sessionPath, file)
-            if (!fs.existsSync(fp)) continue
-            try {
-                const data = JSON.parse(fs.readFileSync(fp, 'utf-8'))
-                const cutoff = Date.now() - 48 * 60 * 60 * 1000
-                let changed = false
-                if (typeof data === 'object' && data !== null) {
-                    for (const key of Object.keys(data)) {
-                        if (data[key]?.timestamp && data[key].timestamp < cutoff) {
-                            delete data[key]
-                            changed = true
-                        }
-                    }
-                    if (changed) fs.writeFileSync(fp, JSON.stringify(data))
-                }
-            } catch {}
-        }
-    } catch {}
-}
-
-async function cleanupSession(sessionPath, userId) {
-    try {
-        if (fs.existsSync(sessionPath)) {
-            fs.rmSync(sessionPath, { recursive: true, force: true })
-        }
-    } catch (e) {
-        console.error('Error eliminando sesión:', e)
-    }
-    global.subBots.delete(userId)
-    global.subBotsData.delete(userId)
-    global.sentCodes.delete(userId)
-    global.subBotReconnectAttempts.delete(userId)
-}
-
-export async function createSubBot(options) {
+async function createSubBot(options) {
     let {
         sessionPath,
         m,
         conn,
         usedPrefix,
         userId,
-        maxReconnectAttempts = 3,
-        isReconnect = false,
         isAutoStart = false,
-        savedConfig = null,
         mcode = false
     } = options
 
-    let reconnectAttempts = global.subBotReconnectAttempts.get(userId) || 0
-
-    if (isReconnect) {
-        reconnectAttempts++
-        global.subBotReconnectAttempts.set(userId, reconnectAttempts)
-        console.log(chalk.yellow(`🔄 Reintento ${reconnectAttempts}/${maxReconnectAttempts} para ${userId}`))
-
-        if (reconnectAttempts > maxReconnectAttempts) {
-            console.log(chalk.red(`❌ Máximos reintentos alcanzados para ${userId}`))
-            if (m && !isAutoStart) {
-                await sendReply(conn, m.chat, `❌ No se pudo reconectar el SubBot después de ${maxReconnectAttempts} intentos.`, m)
-            }
-            return cleanupSession(sessionPath, userId)
-        }
-        await delay(5000 * reconnectAttempts)
-    }
-
     const { version } = await fetchLatestBaileysVersion()
     const msgRetryCache = new NodeCache({ stdTTL: 0, checkperiod: 0 })
-    const { state, saveCreds } = await useMultiFileAuthState(sessionPath)
+    
+    let state, saveCreds
+    try {
+        const auth = await useMultiFileAuthState(sessionPath)
+        state = auth.state
+        saveCreds = auth.saveCreds
+    } catch (e) {
+        console.error('Error cargando auth state:', e.message)
+        if (m && !isAutoStart) {
+            await conn.sendMessage(m.chat, { text: '❌ Error al iniciar sesión. Intenta de nuevo.' }, { quoted: m })
+        }
+        return
+    }
 
-    const connectionOptions = {
+    const sock = makeWASocket({
         logger: pino({ level: 'silent' }),
         printQRInTerminal: false,
         auth: {
@@ -195,217 +143,118 @@ export async function createSubBot(options) {
             keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'fatal' }))
         },
         msgRetryCounterCache: msgRetryCache,
-        browser: ['Asta Bot', 'Chrome', '2.0.0'],
+        browser: ['Ubuntu', 'Chrome', '20.0.04'],
         version,
         generateHighQualityLinkPreview: true,
         defaultQueryTimeoutMs: 60000,
         connectTimeoutMs: 60000,
         keepAliveIntervalMs: 30000
-    }
+    })
 
-    let sock = makeWASocket(connectionOptions)
-
-    const defaultConfig = {
-        name: `SubBot-${userId}`,
-        owner: m?.sender || null,
-        createdAt: new Date().toISOString(),
-        sessionPath: sessionPath
-    }
-
-    const configPath = path.join(sessionPath, 'config.json')
-    let subBotConfig
-
-    try {
-        if (savedConfig && Object.keys(savedConfig).length > 0) {
-            subBotConfig = savedConfig
-        } else if (fs.existsSync(configPath)) {
-            subBotConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
-        } else {
-            subBotConfig = defaultConfig
-            fs.writeFileSync(configPath, JSON.stringify(subBotConfig, null, 2))
-        }
-    } catch {
-        subBotConfig = defaultConfig
-    }
-
-    sock.subConfig = subBotConfig
     sock.userId = userId
 
     let qrTimer = null
     let connectionTimer = null
+    let cleanupTimer = null
     let codeSent = false
+    let isConnected = false
 
-    const cleanup = async (fullCleanup = false) => {
+    const cleanup = async () => {
         if (qrTimer) clearTimeout(qrTimer)
         if (connectionTimer) clearTimeout(connectionTimer)
-
+        if (cleanupTimer) clearTimeout(cleanupTimer)
+        
         try {
             sock.ev.removeAllListeners()
             if (sock.ws?.readyState === 1) sock.ws.close()
         } catch (e) {}
-
-        if (fullCleanup) {
-            await cleanupSession(sessionPath, userId)
+        
+        const index = global.conns.indexOf(sock)
+        if (index > -1) global.conns.splice(index, 1)
+        global.activeSubBots.delete(sock.user?.jid)
+        global.sentCodes.delete(userId)
+        
+        if (!isConnected) {
+            try {
+                if (fs.existsSync(sessionPath)) {
+                    fs.rmSync(sessionPath, { recursive: true, force: true })
+                }
+            } catch (e) {}
         }
     }
 
-    if (!isReconnect && !isAutoStart) {
-        connectionTimer = setTimeout(async () => {
-            if (!sock.user) {
-                console.log(chalk.yellow(`⏰ Timeout de conexión para ${userId}`))
-                await cleanup(true)
-                if (m) await sendReply(conn, m.chat, '⏰ Tiempo de espera agotado. Intenta nuevamente.', m)
-            }
-        }, 120000)
-    }
+    connectionTimer = setTimeout(async () => {
+        if (!isConnected && !isAutoStart) {
+            console.log(chalk.yellow(`⏰ Timeout de conexión para ${userId}`))
+            await cleanup()
+            if (m) await conn.sendMessage(m.chat, { text: '⏰ Tiempo de espera agotado (60s). Intenta nuevamente.' }, { quoted: m })
+        }
+    }, 60000)
 
     async function connectionUpdate(update) {
         const { connection, lastDisconnect, qr } = update
 
-        if (qr && !sock.user) {
-            if (global.sentCodes.has(userId) || codeSent) {
-                console.log(chalk.yellow(`⚠️ Código/QR ya enviado a ${userId}, ignorando...`))
-                return
-            }
-
+        if (qr && !sock.user && !codeSent) {
             codeSent = true
-            
-            global.sentCodes.set(userId, {
-                timestamp: Date.now(),
-                type: mcode ? 'code' : 'qr'
-            })
+            global.sentCodes.set(userId, { timestamp: Date.now(), type: mcode ? 'code' : 'qr' })
 
             if (mcode) {
                 try {
-                    const numeroLimpio = userId.replace(/\D/g, '')
-                    const secret = await sock.requestPairingCode(numeroLimpio)
-                    
-                    console.log(chalk.cyan(`🔑 Código generado para ${numeroLimpio}: ${secret}`))
-                    
-                    const formattedCode = secret.match(/.{1,4}/g)?.join(' ') || secret
-                    const botName = global.namebot || 'Asta Bot'
-
-                    const mensajeCodeNuevo = `╭─[ 🤖 *${botName}* ]─╮
-│
-│  🔐 *CÓDIGO DE VINCULACIÓN*
-│
-│  ═══════════════════════════
-│
-│         ${formattedCode}
-│
-│  ═══════════════════════════
-│
-│  📱 *Instrucciones:*
-│
-│  1️⃣  Abre WhatsApp
-│  2️⃣  ⋮ → *Dispositivos vinculados*
-│  3️⃣  *Vincular con código*
-│  4️⃣  Ingresa el código de arriba
-│
-│  ⏳  Expira en *45 segundos*
-│
-╰──────────────────────────╯`
+                    const secret = await sock.requestPairingCode(userId)
+                    const formattedCode = secret.match(/.{1,4}/g)?.join('-') || secret
+                    const botName = global.namebot || 'AstaBot'
 
                     await conn.sendMessage(m.chat, {
                         image: { url: imagenSerBot },
-                        caption: mensajeCodeNuevo.trim()
+                        caption: mensajeCode.trim()
                     }, { quoted: m })
 
-                    const codeMsg = await sendCodeCopyButton(conn, m.chat, secret, botName, m)
+                    const codeMsg = await sendCodeCopyButton(conn, m.chat, formattedCode, botName, m)
 
                     qrTimer = setTimeout(() => {
                         conn.sendMessage(m.chat, { delete: codeMsg.key }).catch(() => {})
-                        global.sentCodes.delete(userId)
-                    }, 45000)
+                    }, 55000)
 
                 } catch (e) {
                     console.error('Error pairing code:', e)
-                    global.sentCodes.delete(userId)
-                    codeSent = false
-                    if (m) await sendReply(conn, m.chat, '❌ Error generando código. Intenta con QR: ' + usedPrefix + 'qr', m)
+                    if (m) await conn.sendMessage(m.chat, { text: '❌ Error generando código. Usa *.qr*' }, { quoted: m })
+                    await cleanup()
                 }
 
             } else {
                 try {
-                    const qrBuffer = await qrcode.toBuffer(qr, {
-                        scale: 8,
-                        margin: 2,
-                        errorCorrectionLevel: 'H'
-                    })
-
-                    const botName = global.namebot || 'Asta Bot'
-                    
-                    const mensajeQRNuevo = `╭─[ 🤖 *${botName}* ]─╮
-│
-│  📷 *ESCANEA EL QR*
-│
-│  📱 *Instrucciones:*
-│
-│  1️⃣  Abre WhatsApp
-│  2️⃣  ⋮ → *Dispositivos vinculados*
-│  3️⃣  *Vincular dispositivo*
-│  4️⃣  Escanea este código QR
-│
-│  ⏳  Expira en *45 segundos*
-│
-╰──────────────────────────╯`
+                    const qrBuffer = await qrcode.toBuffer(qr, { scale: 8, margin: 2, errorCorrectionLevel: 'H' })
 
                     const qrMsg = await conn.sendMessage(m.chat, {
                         image: qrBuffer,
-                        caption: mensajeQRNuevo.trim()
+                        caption: mensajeQR.trim()
                     }, { quoted: m })
 
                     qrTimer = setTimeout(() => {
                         conn.sendMessage(m.chat, { delete: qrMsg.key }).catch(() => {})
-                        global.sentCodes.delete(userId)
-                    }, 45000)
+                    }, 55000)
 
                 } catch (e) {
                     console.error('Error generando QR:', e)
-                    global.sentCodes.delete(userId)
-                    codeSent = false
+                    await cleanup()
                 }
             }
             return
         }
 
         if (connection === 'open') {
+            isConnected = true
             if (connectionTimer) clearTimeout(connectionTimer)
-            global.subBotReconnectAttempts.delete(userId)
-            global.sentCodes.delete(userId)
+            if (qrTimer) clearTimeout(qrTimer)
 
-            const sessionData = {
-                jid: sock.user.jid,
-                name: sock.user.name || 'SubBot',
-                userId: userId,
-                owner: m?.sender || subBotConfig.owner,
-                connectedAt: new Date().toISOString(),
-                config: sock.subConfig
-            }
-            
-            fs.mkdirSync(sessionPath, { recursive: true })
-            fs.writeFileSync(path.join(sessionPath, 'session.json'), JSON.stringify(sessionData, null, 2))
+            if (!global.conns.includes(sock)) global.conns.push(sock)
+            global.activeSubBots.set(sock.user.jid, { socket: sock, userId, connectedAt: Date.now() })
 
-            global.subBots.set(userId, sock)
-            global.subBotsData.set(userId, sessionData)
+            console.log(chalk.green.bold(`\n✅ SUBBOT CONECTADO\n├─ User: ${sock.user.name}\n├─ JID: ${sock.user.jid}\n└─ ID: ${userId}\n`))
 
-            sock.subConfig.jid = sock.user.jid
-            sock.subConfig.updatedAt = new Date().toISOString()
-            fs.writeFileSync(configPath, JSON.stringify(sock.subConfig, null, 2))
-
-            console.log(chalk.green.bold(
-                `\n✅ SUBBOT CONECTADO\n` +
-                `├─ User: ${sock.user.name}\n` +
-                `├─ JID: ${sock.user.jid}\n` +
-                `└─ ID: ${userId}\n`
-            ))
-
-            if (!isReconnect && !isAutoStart && m?.chat) {
+            if (!isAutoStart && m?.chat) {
                 await conn.sendMessage(m.chat, {
-                    text: `✅ *SubBot Conectado!*\n\n` +
-                          `🤖 ${sock.user.name}\n` +
-                          `📱 ${sock.user.jid.split('@')[0]}\n` +
-                          `👤 Owner: @${m.sender.split('@')[0]}`,
+                    text: `✅ *SubBot Conectado!*\n\n🤖 ${sock.user.name}\n📱 ${sock.user.jid.split('@')[0]}`,
                     mentions: [m.sender]
                 }).catch(() => {})
             }
@@ -416,156 +265,72 @@ export async function createSubBot(options) {
         }
 
         if (connection === 'close') {
-            const statusCode = lastDisconnect?.error?.output?.statusCode ||
-                              lastDisconnect?.error?.output?.payload?.statusCode
-
+            const statusCode = lastDisconnect?.error?.output?.statusCode || lastDisconnect?.error?.output?.payload?.statusCode
             console.log(chalk.yellow(`🔌 SubBot ${userId} desconectado: ${statusCode}`))
 
-            const shouldCleanup = [
-                DisconnectReason.loggedOut,
-                DisconnectReason.badSession,
-                401, 403, 405
-            ].includes(statusCode)
-
-            global.subBots.delete(userId)
-
-            if (shouldCleanup) {
-                console.log(chalk.red(`🗑️ Sesión inválida, limpiando: ${userId}`))
-                await cleanup(true)
+            if (!isConnected) {
+                await cleanup()
                 if (m && !isAutoStart) {
-                    await sendReply(conn, m.chat, `❌ Sesión inválida. Vuelve a vincular con ${usedPrefix}qr`, m)
+                    await conn.sendMessage(m.chat, { text: `❌ No se pudo conectar. Usa *${usedPrefix}${mcode ? 'code' : 'qr'}* de nuevo.` }, { quoted: m })
                 }
-                return
-            }
-
-            if (reconnectAttempts < maxReconnectAttempts) {
-                console.log(chalk.blue(`🔄 Reconectando ${userId}...`))
-                await cleanup(false)
-                await delay(Math.min(4000 * Math.pow(2, reconnectAttempts), 30000))
-                await createSubBot({
-                    ...options,
-                    isReconnect: true
-                })
             } else {
-                await cleanup(true)
-                if (m && !isAutoStart) {
-                    await sendReply(conn, m.chat, `❌ SubBot desconectado permanentemente.`, m)
-                }
+                const index = global.conns.indexOf(sock)
+                if (index > -1) global.conns.splice(index, 1)
+                global.activeSubBots.delete(sock.user?.jid)
             }
         }
     }
 
-    let handlerModule
-    try {
-        handlerModule = await import('../../lib/handler.js')
-    } catch (e) {
-        console.error('Error cargando handler:', e.message)
+    sock.ev.on('connection.update', connectionUpdate)
+    
+    if (saveCreds) {
+        sock.ev.on('creds.update', saveCreds)
     }
 
-    const setupListeners = () => {
+    try {
+        const handlerModule = await import('../../lib/handler.js')
         if (handlerModule?.handler) {
             sock.handler = handlerModule.handler.bind(sock)
-            sock.connectionUpdate = connectionUpdate.bind(sock)
-            sock.credsUpdate = saveCreds.bind(sock)
-
             sock.ev.on('messages.upsert', sock.handler)
-            sock.ev.on('connection.update', sock.connectionUpdate)
-            sock.ev.on('creds.update', sock.credsUpdate)
         }
-    }
-
-    setupListeners()
+    } catch (e) {}
 }
 
 export async function autoStartSubBots() {
-    if (!fs.existsSync(SUBBOT_FOLDER)) {
-        fs.mkdirSync(SUBBOT_FOLDER, { recursive: true })
-        return
-    }
-
-    const sessions = fs.readdirSync(SUBBOT_FOLDER).filter(f => {
-        const fullPath = path.join(SUBBOT_FOLDER, f)
-        return fs.statSync(fullPath).isDirectory() &&
-               fs.existsSync(path.join(fullPath, 'creds.json'))
-    })
-
-    if (!sessions.length) {
-        console.log(chalk.gray('📭 Sin sub-bots guardados.'))
-        return
-    }
-
-    console.log(chalk.cyan(`\n🔄 Restaurando ${sessions.length} sub-bot(s)...`))
-
-    for (const userId of sessions) {
-        try {
-            const sessionPath = path.join(SUBBOT_FOLDER, userId)
-            const configPath = path.join(sessionPath, 'config.json')
-            let savedConfig = {}
-            if (fs.existsSync(configPath)) {
-                savedConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'))
-            }
-            await cleanSubBotCache(sessionPath)
-            console.log(chalk.blue(`  ↳ Iniciando: ${userId}`))
-            await createSubBot({
-                sessionPath,
-                m: null,
-                conn: global.conn,
-                usedPrefix: global.prefix || '.',
-                userId,
-                maxReconnectAttempts: 5,
-                isReconnect: false,
-                isAutoStart: true,
-                savedConfig,
-                mcode: false
-            })
-            await delay(2000)
-        } catch (e) {
-            console.error(chalk.red(`  ✖ Error restaurando ${userId}: ${e.message}`))
-        }
-    }
+    // DESACTIVADO - No restaurar subbots automáticamente para evitar errores
+    console.log(chalk.gray('📭 Auto-restauración de subbots desactivada.'))
+    return
 }
 
 let handler = async (m, { conn, args, usedPrefix, command }) => {
-    const userId = normalize(m.sender)
-    
-    const isCodeMode = command === 'code' || args.includes('code') || args.includes('--code')
-    
-    const maxSubBots = global.maxSubBots || 10
-    const activeSubBots = global.subBots.size
-    
-    if (activeSubBots >= maxSubBots && !m.isOwner) {
-        return conn.sendMessage(m.chat, {
-            text: `⚠️ *LÍMITE ALCANZADO*\n` +
-                  `• Activos: ${activeSubBots}/${maxSubBots}\n` +
-                  `• Usa *${usedPrefix}listsub* para ver tus sub-bots\n` +
-                  `• Usa *${usedPrefix}delsub <id>* para eliminar uno`
-        }, { quoted: m })
-    }
+    const userId = m.sender.split('@')[0]
+    const mcode = command === 'code' || args.includes('code')
 
-    if (isSubBotConnected(userId)) {
+    if (isSubBotConnected(m.sender)) {
         return conn.sendMessage(m.chat, {
-            text: `⚠️ Ya tienes un SubBot activo.\n\n` +
-                  `• *${usedPrefix}listsub* - Ver tus sub-bots\n` +
-                  `• *${usedPrefix}delsub ${userId}* - Eliminar actual`
+            text: `⚠️ Ya tienes un SubBot activo.\n\nUsa *${usedPrefix}delsub ${userId}* para eliminarlo.`
         }, { quoted: m })
     }
 
     const sessionPath = path.join(SUBBOT_FOLDER, userId)
 
     if (fs.existsSync(sessionPath)) {
-        try {
-            fs.rmSync(sessionPath, { recursive: true, force: true })
-            await delay(1000)
-        } catch (e) {
-            console.error('Error limpiando sesión:', e)
-        }
+        try { 
+            fs.rmSync(sessionPath, { recursive: true, force: true }) 
+        } catch (e) {}
+        await delay(1000)
     }
 
-    fs.mkdirSync(sessionPath, { recursive: true })
+    try {
+        fs.mkdirSync(sessionPath, { recursive: true })
+    } catch (e) {
+        return conn.sendMessage(m.chat, { text: '❌ Error al crear sesión. Intenta de nuevo.' }, { quoted: m })
+    }
+    
     global.sentCodes.delete(userId)
 
-    await conn.sendMessage(m.chat, {
-        text: `⏳ *Iniciando vinculación...*\n\n📱 Modo: ${isCodeMode ? 'Código' : 'QR'}\n⏰ Tienes 45 segundos para vincular.`
+    await conn.sendMessage(m.chat, { 
+        text: `⏳ *Generando ${mcode ? 'código' : 'QR'}...*\n⏰ Tienes 60 segundos para vincular.` 
     }, { quoted: m })
 
     await createSubBot({
@@ -574,15 +339,13 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
         conn,
         usedPrefix,
         userId,
-        maxReconnectAttempts: 3,
-        isReconnect: false,
         isAutoStart: false,
-        mcode: isCodeMode
+        mcode
     })
 }
 
-handler.help = ['qr', 'code', 'serbot']
+handler.help = ['qr', 'code']
 handler.tags = ['serbot']
-handler.command = ['qr', 'code', 'serbot', 'servot']
+handler.command = ['qr', 'code']
 
 export default handler

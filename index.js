@@ -9,19 +9,23 @@ import fs from 'fs'
 import path from 'path'
 import { pathToFileURL } from 'url'
 import { pluginLid } from 'lidsync'
-import { StorePro } from 'lidsync/examples/store.js'
 
 const { 
   default: makeWASocket,
   useMultiFileAuthState,
   fetchLatestBaileysVersion,
+  makeInMemoryStore,
   DisconnectReason
 } = pkg
 
-// ✅ Inicialización del Store para optimizar memoria en Termux/VPS
-const store = StorePro()
+const store = makeInMemoryStore({ logger: Pino({ level: 'silent' }) })
 
-// ✅ Filtro solo después de que el menú termine
+setInterval(() => {
+    try {
+        store.writeToFile('./baileys_store.json')
+    } catch (e) {}
+}, 10_000)
+
 let filtroActivo = false
 
 const _stdoutWrite = process.stdout.write.bind(process.stdout)
@@ -166,6 +170,8 @@ async function start() {
   const { state, saveCreds } = await useMultiFileAuthState('./session')
   const { version } = await fetchLatestBaileysVersion()
 
+  store.readFromFile('./baileys_store.json')
+
   let usarQR = true
   let numeroGuardado = null
 
@@ -196,7 +202,7 @@ async function start() {
 
   const logger = Pino({ level: 'silent' })
 
-  const sock = makeWASocket({
+  let sock = makeWASocket({
     logger,
     auth: state,
     browser: [global.namebot, 'Chrome', global.vs],
@@ -204,8 +210,9 @@ async function start() {
     printQRInTerminal: false
   })
 
-  // ✅ Vincular el Store a los eventos del socket
   store.bind(sock.ev)
+
+  sock = pluginLid(sock, { store })
 
   if (!sesionExiste && !usarQR && numeroGuardado) {
     await new Promise((resolve) => {
@@ -254,6 +261,9 @@ async function start() {
       const reason = lastDisconnect?.error?.output?.statusCode
       if (reason !== DisconnectReason.loggedOut) {
         console.log('🔄 Reconectando...')
+        if (sock.lid && typeof sock.lid.destroy === 'function') {
+           sock.lid.destroy()
+        }
         start()
       } else {
         console.log('❌ Sesión cerrada')
@@ -264,7 +274,6 @@ async function start() {
 
   sock.ev.on('creds.update', saveCreds)
   
-  // ✅ Manejo de mensajes integrando la lógica de lidsync si es necesario
   sock.ev.on('messages.upsert', async (m) => {
     await handler(sock, m)
   })

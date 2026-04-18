@@ -1,14 +1,4 @@
 import pkg from '@whiskeysockets/baileys'
-
-const {
-    useMultiFileAuthState,
-    DisconnectReason,
-    makeCacheableSignalKeyStore,
-    fetchLatestBaileysVersion,
-    generateWAMessageFromContent,
-    proto,
-    WA_DEFAULT_EPHEMERAL
-} = pkg
 import qrcode from 'qrcode'
 import NodeCache from 'node-cache'
 import fs from 'fs'
@@ -17,37 +7,36 @@ import pino from 'pino'
 import chalk from 'chalk'
 import { fileURLToPath } from 'url'
 
-const makeWASocket = pkg.default
+const {
+    useMultiFileAuthState,
+    DisconnectReason,
+    makeCacheableSignalKeyStore,
+    fetchLatestBaileysVersion,
+    generateWAMessageFromContent,
+    proto,
+    WA_DEFAULT_EPHEMERAL,
+    default: makeWASocket
+} = pkg
+
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 const imagenSerBot = 'https://files.catbox.moe/gptlxc.jpg'
 
-const mensajeQR = `╭─〔 💻 𝘼𝙎𝙏𝘼 𝘽𝙊𝙏 • 𝙈𝙊𝘿𝙊 𝙌𝙍 〕─╮
+const mensajeQR = `╭─[ 🤖 *${global.namebot || 'Asta Bot'}* ]─╮
 │
-│  📲 Escanea este *QR* desde otro celular o PC
-│  para convertirte en un *Sub-Bot* de Asta.
+│  📷 *ESCANEA EL QR*
 │
-│  1️⃣  Pulsa los ⋮ tres puntos arriba a la derecha
-│  2️⃣  Ve a *Dispositivos vinculados*
-│  3️⃣  Escanea el QR y ¡listo! ⚡
+│  📱 *Instrucciones:*
 │
-│  ⏳  *Expira en 45 segundos.*
-╰───────────────────────`
-
-const mensajeCode = `╭─[ 💻 𝘼𝙎𝙏𝘼 𝘽𝙊𝙏 • 𝙈𝙊𝘿𝙊 𝘾𝙊𝘿𝙀 ]─╮
+│  1️⃣  Abre WhatsApp
+│  2️⃣  ⋮ → *Dispositivos vinculados*
+│  3️⃣  *Vincular dispositivo*
+│  4️⃣  Escanea este código QR
 │
-│  🧠  Este es el *Modo CODE* de Asta Bot.
-│  Ingresa el código desde otro celular o PC
-│  para convertirte en un *Sub-Bot*.
+│  ⏳  Expira en *45 segundos*
 │
-│  1️⃣  Pulsa los ⋮ tres puntos arriba a la derecha
-│  2️⃣  Entra en *Dispositivos vinculados*
-│  3️⃣  Selecciona *Vincular con código de 8 dígitos*
-│  4️⃣  Ingresa el código que aparecerá a continuación
-│
-│  ⏳  *Expira en 45 segundos.*
-╰────────────────────────╯`
+╰──────────────────────────╯`
 
 if (!global.subBots) global.subBots = new Map()
 if (!global.subBotsData) global.subBotsData = new Map()
@@ -62,13 +51,6 @@ function normalize(num) {
 
 function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms))
-}
-
-function msToTime(duration) {
-    const seconds = Math.floor((duration / 1000) % 60)
-    const minutes = Math.floor((duration / (1000 * 60)) % 60)
-    if (minutes > 0) return `${minutes}m ${seconds}s`
-    return `${seconds}s`
 }
 
 function isSubBotConnected(userId) {
@@ -295,16 +277,41 @@ export async function createSubBot(options) {
 
             if (mcode) {
                 try {
-                    const secret = await sock.requestPairingCode(userId)
-                    const formattedCode = secret.match(/.{1,4}/g)?.join('-') || secret
+                    const numeroLimpio = userId.replace(/\D/g, '')
+                    const secret = await sock.requestPairingCode(numeroLimpio)
+                    
+                    console.log(chalk.cyan(`🔑 Código generado para ${numeroLimpio}: ${secret}`))
+                    
+                    const formattedCode = secret.match(/.{1,4}/g)?.join(' ') || secret
                     const botName = global.namebot || 'Asta Bot'
+
+                    const mensajeCodeNuevo = `╭─[ 🤖 *${botName}* ]─╮
+│
+│  🔐 *CÓDIGO DE VINCULACIÓN*
+│
+│  ═══════════════════════════
+│
+│         ${formattedCode}
+│
+│  ═══════════════════════════
+│
+│  📱 *Instrucciones:*
+│
+│  1️⃣  Abre WhatsApp
+│  2️⃣  ⋮ → *Dispositivos vinculados*
+│  3️⃣  *Vincular con código*
+│  4️⃣  Ingresa el código de arriba
+│
+│  ⏳  Expira en *45 segundos*
+│
+╰──────────────────────────╯`
 
                     await conn.sendMessage(m.chat, {
                         image: { url: imagenSerBot },
-                        caption: mensajeCode.trim()
+                        caption: mensajeCodeNuevo.trim()
                     }, { quoted: m })
 
-                    const codeMsg = await sendCodeCopyButton(conn, m.chat, formattedCode, botName, m)
+                    const codeMsg = await sendCodeCopyButton(conn, m.chat, secret, botName, m)
 
                     qrTimer = setTimeout(() => {
                         conn.sendMessage(m.chat, { delete: codeMsg.key }).catch(() => {})
@@ -326,9 +333,26 @@ export async function createSubBot(options) {
                         errorCorrectionLevel: 'H'
                     })
 
+                    const botName = global.namebot || 'Asta Bot'
+                    
+                    const mensajeQRNuevo = `╭─[ 🤖 *${botName}* ]─╮
+│
+│  📷 *ESCANEA EL QR*
+│
+│  📱 *Instrucciones:*
+│
+│  1️⃣  Abre WhatsApp
+│  2️⃣  ⋮ → *Dispositivos vinculados*
+│  3️⃣  *Vincular dispositivo*
+│  4️⃣  Escanea este código QR
+│
+│  ⏳  Expira en *45 segundos*
+│
+╰──────────────────────────╯`
+
                     const qrMsg = await conn.sendMessage(m.chat, {
                         image: qrBuffer,
-                        caption: mensajeQR.trim()
+                        caption: mensajeQRNuevo.trim()
                     }, { quoted: m })
 
                     qrTimer = setTimeout(() => {
@@ -381,10 +405,7 @@ export async function createSubBot(options) {
                     text: `✅ *SubBot Conectado!*\n\n` +
                           `🤖 ${sock.user.name}\n` +
                           `📱 ${sock.user.jid.split('@')[0]}\n` +
-                          `👤 Owner: @${m.sender.split('@')[0]}\n\n` +
-                          `⚙️ Comandos disponibles:\n` +
-                          `• ${usedPrefix}listsub - Listar sub-bots\n` +
-                          `• ${usedPrefix}delsub ${userId} - Eliminar sub-bot`,
+                          `👤 Owner: @${m.sender.split('@')[0]}`,
                     mentions: [m.sender]
                 }).catch(() => {})
             }
@@ -438,7 +459,7 @@ export async function createSubBot(options) {
     try {
         handlerModule = await import('../../lib/handler.js')
     } catch (e) {
-        console.error('Error cargando handler:', e)
+        console.error('Error cargando handler:', e.message)
     }
 
     const setupListeners = () => {

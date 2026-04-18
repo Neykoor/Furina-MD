@@ -8,7 +8,8 @@ global.etiqueta = '𝕱𝖊𝖗𝖓𝖆𝖓𝖉𝖔'
 
 // Owners globales - pueden ser números o JIDs completos
 global.owner = [
-  ['5214183357841', 'Fernando', true]
+  ['5214183357841', 'Fernando', true],
+  ['5216631079388', 'neykoor', true]
 ]
 
 // Enlaces por defecto

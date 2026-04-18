@@ -4,10 +4,12 @@ import Pino from 'pino'
 import qrcode from 'qrcode-terminal'
 import readline from 'readline'
 import { handler } from './lib/handler.js'
-import { onGroupUpdate } from './plugins/eventos/group-events.js'
+import { onGroupUpdate } from './core/group-events.js'
 import fs from 'fs'
 import path from 'path'
 import { pathToFileURL } from 'url'
+import { pluginLid } from 'lidsync'
+import { StorePro } from 'lidsync/examples/store.js'
 
 const { 
   default: makeWASocket,
@@ -15,6 +17,9 @@ const {
   fetchLatestBaileysVersion,
   DisconnectReason
 } = pkg
+
+// ✅ Inicialización del Store para optimizar memoria en Termux/VPS
+const store = StorePro()
 
 // ✅ Filtro solo después de que el menú termine
 let filtroActivo = false
@@ -199,6 +204,9 @@ async function start() {
     printQRInTerminal: false
   })
 
+  // ✅ Vincular el Store a los eventos del socket
+  store.bind(sock.ev)
+
   if (!sesionExiste && !usarQR && numeroGuardado) {
     await new Promise((resolve) => {
       const listener = (update) => {
@@ -255,7 +263,12 @@ async function start() {
   })
 
   sock.ev.on('creds.update', saveCreds)
-  sock.ev.on('messages.upsert', async (m) => await handler(sock, m))
+  
+  // ✅ Manejo de mensajes integrando la lógica de lidsync si es necesario
+  sock.ev.on('messages.upsert', async (m) => {
+    await handler(sock, m)
+  })
+
   sock.ev.on('group-participants.update', async (update) => {
     await onGroupUpdate(sock, update)
   })

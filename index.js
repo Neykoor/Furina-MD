@@ -170,7 +170,9 @@ async function start() {
   const { state, saveCreds } = await useMultiFileAuthState('./session')
   const { version } = await fetchLatestBaileysVersion()
 
-  store.readFromFile('./baileys_store.json')
+  try {
+    store.readFromFile('./baileys_store.json')
+  } catch (e) {}
 
   let usarQR = true
   let numeroGuardado = null

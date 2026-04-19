@@ -171,7 +171,7 @@ export async function createSubBot(options) {
         
         const index = global.conns.indexOf(sock)
         if (index > -1) global.conns.splice(index, 1)
-        global.activeSubBots.delete(sock.user?.jid)
+        if (sock.user?.jid) global.activeSubBots.delete(sock.user.jid)
         global.sentCodes.delete(userId)
         
         if (!isConnected) {
@@ -211,7 +211,6 @@ export async function createSubBot(options) {
 
                     const codeMsg = await sendCodeCopyButton(conn, m.chat, formattedCode, botName, m)
 
-                    // CRÍTICO: Esperar a que las credenciales se guarden antes de considerar listo
                     console.log(chalk.blue(`⏳ Código generado. Esperando 3 segundos para guardar credenciales...`))
                     await delay(3000)
 
@@ -251,16 +250,25 @@ export async function createSubBot(options) {
             if (connectionTimer) clearTimeout(connectionTimer)
             if (qrTimer) clearTimeout(qrTimer)
 
-            if (!global.conns.includes(sock)) global.conns.push(sock)
-            global.activeSubBots.set(sock.user.jid, { socket: sock, userId, connectedAt: Date.now() })
+            // VERIFICACIÓN DEFENSIVA: sock.user puede no estar listo inmediatamente
+            const userName = sock.user?.name || 'SubBot'
+            const userJid = sock.user?.jid || `${userId}@s.whatsapp.net`
+            const userNumber = userJid.split('@')[0]
 
-            console.log(chalk.green.bold(`\n✅ SUBBOT CONECTADO\n├─ User: ${sock.user.name}\n├─ JID: ${sock.user.jid}\n└─ ID: ${userId}\n`))
+            if (!global.conns.includes(sock)) global.conns.push(sock)
+            global.activeSubBots.set(userJid, { socket: sock, userId, connectedAt: Date.now() })
+
+            console.log(chalk.green.bold(`\n✅ SUBBOT CONECTADO\n├─ User: ${userName}\n├─ JID: ${userJid}\n└─ ID: ${userId}\n`))
 
             if (!isAutoStart && m?.chat) {
-                await conn.sendMessage(m.chat, {
-                    text: `✅ *SubBot Conectado!*\n\n🤖 ${sock.user.name}\n📱 ${sock.user.jid.split('@')[0]}`,
-                    mentions: [m.sender]
-                }).catch(() => {})
+                try {
+                    await conn.sendMessage(m.chat, {
+                        text: `✅ *SubBot Conectado!*\n\n🤖 ${userName}\n📱 ${userNumber}`,
+                        mentions: [m.sender]
+                    })
+                } catch (e) {
+                    console.error('Error enviando mensaje de confirmación:', e.message)
+                }
             }
 
             if (global.IDchannel) {
@@ -326,7 +334,7 @@ export async function createSubBot(options) {
                     }
                     
                     // Actualizar activeSubBots
-                    global.activeSubBots.delete(sock.user?.jid)
+                    if (sock.user?.jid) global.activeSubBots.delete(sock.user.jid)
                     
                     // Limpiar socket antiguo
                     try {
@@ -359,7 +367,7 @@ export async function createSubBot(options) {
                 if (index > -1) {
                     global.conns.splice(index, 1)
                 }
-                global.activeSubBots.delete(sock.user?.jid)
+                if (sock.user?.jid) global.activeSubBots.delete(sock.user.jid)
             }
         }
     }

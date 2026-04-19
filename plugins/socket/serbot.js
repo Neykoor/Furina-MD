@@ -26,7 +26,7 @@ const mensajeQR = `╭─〔 💻 𝘼𝙎𝙏𝘼 𝘽𝙊𝙏 • 𝙈𝙊𝘿
 │
 │  1️⃣  Pulsa los ⋮ tres puntos arriba a la derecha
 │  2️⃣  Ve a *Dispositivos vinculados*
-│  3️⃣  Escanea el QR y ¡listo! ⚡
+│  3️⃣  Escanea el QR y ¡Listo! ⚡
 │
 │  ⏳  *Expira en 45 segundos.*
 ╰───────────────────────`
@@ -108,7 +108,7 @@ async function sendCodeCopyButton(conn, jid, code, botName, quoted) {
     return msg
 }
 
-async function createSubBot(options) {
+export async function createSubBot(options) {
     let {
         sessionPath,
         m,
@@ -135,7 +135,7 @@ async function createSubBot(options) {
         return
     }
 
-    const sock = makeWASocket({
+    let sock = makeWASocket({
         logger: pino({ level: 'silent' }),
         printQRInTerminal: false,
         auth: {
@@ -201,7 +201,7 @@ async function createSubBot(options) {
             if (mcode) {
                 try {
                     const secret = await sock.requestPairingCode(userId)
-                    const formattedCode = secret.match(/.{1,4}/g)?.join('-') || secret
+                    const formattedCode = secret?.match(/.{1,4}/g)?.join("-") || secret
                     const botName = global.namebot || 'AstaBot'
 
                     await conn.sendMessage(m.chat, {
@@ -211,13 +211,17 @@ async function createSubBot(options) {
 
                     const codeMsg = await sendCodeCopyButton(conn, m.chat, formattedCode, botName, m)
 
+                    // CRÍTICO: Esperar a que las credenciales se guarden antes de considerar listo
+                    console.log(chalk.blue(`⏳ Código generado. Esperando 3 segundos para guardar credenciales...`))
+                    await delay(3000)
+
                     qrTimer = setTimeout(() => {
                         conn.sendMessage(m.chat, { delete: codeMsg.key }).catch(() => {})
                     }, 55000)
 
                 } catch (e) {
                     console.error('Error pairing code:', e)
-                    if (m) await conn.sendMessage(m.chat, { text: '❌ Error generando código. Usa *.qr*' }, { quoted: m })
+                    if (m) await conn.sendMessage(m.chat, { text: '❌ Error generando código. Intenta de nuevo.' }, { quoted: m })
                     await cleanup()
                 }
 
@@ -264,10 +268,87 @@ async function createSubBot(options) {
             }
         }
 
+        // MANEJO DEL ERROR 515 EN SUB-BOTS
         if (connection === 'close') {
             const statusCode = lastDisconnect?.error?.output?.statusCode || lastDisconnect?.error?.output?.payload?.statusCode
-            console.log(chalk.yellow(`🔌 SubBot ${userId} desconectado: ${statusCode}`))
+            console.log(chalk.yellow(`🔌 SubBot ${userId} desconectado. Status: ${statusCode}`))
 
+            // Si es error 515, intentar reconexión con credenciales guardadas
+            if (statusCode === 515) {
+                console.log(chalk.yellow(`🔄 Error 515 en SubBot. Esperando credenciales y reconectando...`))
+                
+                // Esperar a que las credenciales se guarden en disco
+                await delay(3000)
+                
+                try {
+                    // Recargar estado de autenticación
+                    const { state: newState, saveCreds: newSaveCreds } = await useMultiFileAuthState(sessionPath)
+                    
+                    // Crear nuevo socket con credenciales frescas
+                    const newSock = makeWASocket({
+                        logger: pino({ level: 'silent' }),
+                        printQRInTerminal: false,
+                        auth: {
+                            creds: newState.creds,
+                            keys: makeCacheableSignalKeyStore(newState.keys, pino({ level: 'fatal' }))
+                        },
+                        msgRetryCounterCache: msgRetryCache,
+                        browser: ['Ubuntu', 'Chrome', '20.0.04'],
+                        version,
+                        generateHighQualityLinkPreview: true,
+                        defaultQueryTimeoutMs: 60000,
+                        connectTimeoutMs: 60000,
+                        keepAliveIntervalMs: 30000
+                    })
+                    
+                    newSock.userId = userId
+                    
+                    // Transferir listeners esenciales
+                    newSock.ev.on('creds.update', newSaveCreds)
+                    
+                    // Importar y asignar handler de mensajes
+                    try {
+                        const handlerModule = await import('../../lib/handler.js')
+                        if (handlerModule?.handler) {
+                            newSock.handler = handlerModule.handler.bind(newSock)
+                            newSock.ev.on('messages.upsert', newSock.handler)
+                        }
+                    } catch (e) {
+                        console.error('Error cargando handler:', e.message)
+                    }
+                    
+                    // Reemplazar socket en el array global
+                    const oldIndex = global.conns.indexOf(sock)
+                    if (oldIndex > -1) {
+                        global.conns.splice(oldIndex, 1, newSock)
+                    } else {
+                        global.conns.push(newSock)
+                    }
+                    
+                    // Actualizar activeSubBots
+                    global.activeSubBots.delete(sock.user?.jid)
+                    
+                    // Limpiar socket antiguo
+                    try {
+                        sock.ev.removeAllListeners()
+                        if (sock.ws?.readyState === 1) sock.ws.close()
+                    } catch (e) {}
+                    
+                    // Reasignar referencia local
+                    sock = newSock
+                    
+                    // Asignar el listener de conexión al nuevo socket
+                    sock.ev.on('connection.update', connectionUpdate)
+                    
+                    console.log(chalk.green('✅ SubBot reconectado después de error 515'))
+                    return
+
+                } catch (reconnectError) {
+                    console.error(chalk.red('❌ Error reconectando SubBot después de 515:'), reconnectError.message)
+                }
+            }
+            
+            // Otros errores de cierre
             if (!isConnected) {
                 await cleanup()
                 if (m && !isAutoStart) {
@@ -275,7 +356,9 @@ async function createSubBot(options) {
                 }
             } else {
                 const index = global.conns.indexOf(sock)
-                if (index > -1) global.conns.splice(index, 1)
+                if (index > -1) {
+                    global.conns.splice(index, 1)
+                }
                 global.activeSubBots.delete(sock.user?.jid)
             }
         }
@@ -287,17 +370,19 @@ async function createSubBot(options) {
         sock.ev.on('creds.update', saveCreds)
     }
 
+    // Importar handler para sub-bots
     try {
         const handlerModule = await import('../../lib/handler.js')
         if (handlerModule?.handler) {
             sock.handler = handlerModule.handler.bind(sock)
             sock.ev.on('messages.upsert', sock.handler)
         }
-    } catch (e) {}
+    } catch (e) {
+        console.error('Error cargando handler inicial:', e.message)
+    }
 }
 
 export async function autoStartSubBots() {
-    // DESACTIVADO - No restaurar subbots automáticamente para evitar errores
     console.log(chalk.gray('📭 Auto-restauración de subbots desactivada.'))
     return
 }

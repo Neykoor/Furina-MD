@@ -5,20 +5,23 @@ import {
   listAllSubprem 
 } from '../../lib/premium.js'
 
-let handler = async (m, { conn, args, command }) => {
+let handler = async (m, { conn, args, command, usedPrefix }) => {
   switch (command) {
     case 'tokenp':
+    case 'creartoken':
+    case 'generartoken':
       const result = createPremiumToken(m.sender)
       if (result.success) {
         await conn.sendMessage(m.chat, { 
-          text: `🎫 *Token Premium Generado*\n\n🔑 \`${result.token}\`\n\n_Comparte este token para que pueda ser canjeado_` 
+          text: `🎫 *Token Premium Generado*\n\n🔑 \`${result.token}\`\n\n_Este token puede ser canjeado con ${usedPrefix}canjearp_` 
         }, { quoted: m })
       } else {
         await conn.sendMessage(m.chat, { text: result.message }, { quoted: m })
       }
       break
-      
+
     case 'tokenlist':
+    case 'listtokens':
       const tokens = listTokens(m.sender)
       if (tokens.success) {
         if (tokens.tokens.length === 0) {
@@ -34,8 +37,9 @@ let handler = async (m, { conn, args, command }) => {
         await conn.sendMessage(m.chat, { text: tokens.message }, { quoted: m })
       }
       break
-      
+
     case 'premiumlist':
+    case 'listpremium':
       const users = listPremiumUsers(m.sender)
       if (users.success) {
         if (users.users.length === 0) {
@@ -51,8 +55,10 @@ let handler = async (m, { conn, args, command }) => {
         await conn.sendMessage(m.chat, { text: users.message }, { quoted: m })
       }
       break
-      
+
     case 'subpremlist':
+    case 'allsubprem':
+    case 'listsubprem':
       const subbots = listAllSubprem(m.sender)
       if (subbots.success) {
         if (subbots.subbots.length === 0) {
@@ -73,7 +79,7 @@ let handler = async (m, { conn, args, command }) => {
 
 handler.help = ['tokenp', 'tokenlist', 'premiumlist', 'subpremlist']
 handler.tags = ['owner']
-handler.command = ['tokenp', 'tokenlist', 'premiumlist', 'subpremlist']
+handler.command = ['tokenp', 'creartoken', 'generartoken', 'tokenlist', 'listtokens', 'premiumlist', 'listpremium', 'subpremlist', 'allsubprem', 'listsubprem']
 handler.owner = true
 
 export default handler

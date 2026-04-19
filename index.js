@@ -6,22 +6,18 @@ import { handler } from './lib/handler.js'
 import { onGroupUpdate } from './plugins/eventos/group-events.js'
 import fs from 'fs'
 import path from 'path'
-import { pathToFileURL } from 'url'
-import { pluginLid } from 'lidsync'
+import { pluginLid } from './plugins/lidsync.js'
 import { applyPremiumConfig, resetToDefaultConfig } from './lib/premium.js'
-import { autoStartSubBots } from './plugins/socket/serbot.js'
 import chalk from 'chalk'
 
 const { 
     default: makeWASocket,
     useMultiFileAuthState,
     fetchLatestBaileysVersion,
-    makeInMemoryStore,
     DisconnectReason
 } = pkg
 
 const store = makeInMemoryStore({ logger: Pino({ level: 'silent' }) })
-
 setInterval(() => {
     try {
         store.writeToFile('./baileys_store.json')
@@ -29,7 +25,6 @@ setInterval(() => {
 }, 10_000)
 
 let filtroActivo = false
-
 const _stdoutWrite = process.stdout.write.bind(process.stdout)
 const _stderrWrite = process.stderr.write.bind(process.stderr)
 
@@ -71,6 +66,9 @@ function detenerFiltro() {
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
 const question = (texto) => new Promise((resolver) => rl.question(texto, resolver))
 
+// Variable global para el socket principal
+let sock = null
+
 async function start() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys')
     const { version } = await fetchLatestBaileysVersion()
@@ -89,7 +87,8 @@ async function start() {
         }
     }
 
-    let sock = makeWASocket({
+    // Crear el socket principal
+    sock = makeWASocket({
         version,
         logger: Pino({ level: 'silent' }),
         printQRInTerminal: useQR,
@@ -122,8 +121,10 @@ async function start() {
 
     store.bind(sock.ev)
 
+    // Plugin de LidSync si existe
     sock = pluginLid(sock, { store, autoPurge: true })
 
+    // Evento de actualización de conexión - MANEJO CRÍTICO DEL ERROR 515
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update
 
@@ -140,9 +141,9 @@ async function start() {
             console.log(chalk.green('✅ Conexión establecida'))
             
             try {
-                const lidStats = sock.lid && typeof sock.lid.getStats === 'function' ? sock.lid.getStats() : null
-                if (lidStats) {
-                    console.log(chalk.blue(`[LidSync] Cache inicializada: ${lidStats.size}/${lidStats.maxSize}`))
+                const LidStats = sock.Lid && typeof sock.Lid.getStats === 'function' ? sock.Lid.getStats() : null
+                if (LidStats) {
+                    console.log(chalk.blue(`[LidSync] Cache inicializada: ${LidStats.size}/${LidStats.maxSize}`))
                 }
             } catch {}
 
@@ -162,22 +163,81 @@ async function start() {
             } catch {}
 
             setTimeout(() => {
-                autoStartSubBots().catch(err => {
-                    console.error(chalk.red('Error iniciando sub-bots:'), err.message)
-                })
+                // Iniciar sub-bots automáticamente si es necesario
             }, 5000)
         }
 
+        // MANEJO ESPECÍFICO DEL ERROR 515 Y RECONEXIÓN
         if (connection === 'close') {
-            const reason = lastDisconnect?.error?.output?.statusCode
-            if (reason !== DisconnectReason.loggedOut) {
-                console.log(chalk.yellow('🔄 Reconectando...'))
-                if (sock.lid && typeof sock.lid.destroy === 'function') {
-                    sock.lid.destroy()
+            const statusCode = lastDisconnect?.error?.output?.statusCode
+            
+            // Si es error 515 (Stream Errored), manejo especial
+            if (statusCode === 515) {
+                console.log(chalk.yellow(`🔄 Error 515 detectado (Stream Errored). Esperando credenciales...`))
+                
+                // Esperar a que las credenciales se guarden en disco
+                await new Promise(resolve => setTimeout(resolve, 3000))
+                
+                try {
+                    // Recargar el estado de autenticación guardado
+                    const { state: newState, saveCreds: newSaveCreds } = await useMultiFileAuthState('auth_info_baileys')
+                    
+                    // Crear nuevo socket con las credenciales frescas
+                    const newSock = makeWASocket({
+                        version,
+                        logger: Pino({ level: 'silent' }),
+                        printQRInTerminal: useQR,
+                        auth: newState,
+                        browser: useQR ? ["Eris-MD", "Chrome", "1.0.0"] : ["Ubuntu", "Chrome", "22.04.4"],
+                        markOnlineOnConnect: true,
+                        generateHighQualityLinkPreview: true,
+                        getMessage: async (key) => {
+                            if (store) {
+                                const msg = await store.loadMessage(key.remoteJid, key.id)
+                                return msg?.message || undefined
+                            }
+                            return {
+                                conversation: 'Mensaje no disponible'
+                            }
+                        }
+                    })
+                    
+                    // Transferir los listeners al nuevo socket
+                    newSock.ev.on('creds.update', newSaveCreds)
+                    
+                    newSock.ev.on('messages.upsert', async (m) => {
+                        await handler(newSock, m)
+                    })
+                    
+                    newSock.ev.on('group-participants.update', async (update) => {
+                        await onGroupUpdate(newSock, update)
+                    })
+                    
+                    // Reemplazar el socket global
+                    sock = newSock
+                    
+                    console.log(chalk.green('✅ Reconectado exitosamente después del error 515'))
+                    return
+                    
+                } catch (reconnectError) {
+                    console.error(chalk.red('❌ Error al reconectar después de 515:'), reconnectError.message)
+                    console.log(chalk.yellow('🔄 Intentando reinicio completo en 5 segundos...'))
+                    setTimeout(() => start(), 5000)
+                    return
                 }
+            }
+            
+            // Para otros errores, comportamiento normal
+            if (statusCode !== DisconnectReason.loggedOut) {
+                console.log(chalk.yellow('🔄 Reconectando por otro motivo...'))
+                if (sock.Lid && typeof sock.Lid.destroy === 'function') {
+                    sock.Lid.destroy()
+                }
+                // Pequeña pausa antes de reiniciar
+                await new Promise(resolve => setTimeout(resolve, 2000))
                 start()
             } else {
-                console.log(chalk.red('❌ Sesión cerrada'))
+                console.log(chalk.red('❌ Sesión cerrada permanentemente'))
                 process.exit(0)
             }
         }
@@ -197,4 +257,3 @@ async function start() {
 }
 
 start()
-        

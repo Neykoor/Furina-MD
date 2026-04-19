@@ -6,7 +6,6 @@ import { handler } from './lib/handler.js'
 import { onGroupUpdate } from './plugins/eventos/group-events.js'
 import fs from 'fs'
 import path from 'path'
-import { pluginLid } from 'lidsync'
 import { applyPremiumConfig, resetToDefaultConfig } from './lib/premium.js'
 import chalk from 'chalk'
 
@@ -26,53 +25,32 @@ setInterval(() => {
     } catch (e) {}
 }, 10_000)
 
-let filtroActivo = false
-
-const _stdoutWrite = process.stdout.write.bind(process.stdout)
-const _stderrWrite = process.stderr.write.bind(process.stderr)
-
-const iniciosFiltro = [
-    'Closing session:',
-    'Closing open session',
-    'Decrypted message with closed session',
-    'Got receipt',
-    'Got sender key',
-    'Got message with closed session',
-    'Unhandled receipt',
-    'Appending 0 messages',
-    'recv ',
-    'Queueing 1',
-    'Got unknown'
+// Filtro de debug silenciado
+const SILENT_PATTERNS = [
+    'Closing session:', 'Closing open session', 'Closing stale open session',
+    'SessionEntry', '_chains:', 'registrationId:', 'currentRatchet:',
+    'ephemeralKeyPair:', 'lastRemoteEphemeralKey:', 'previousCounter:',
+    'rootKey:', 'indexInfo:', 'baseKey:', 'baseKeyType:', 'pendingPreKey:',
+    'signedKeyId:', 'preKeyId:', 'remoteIdentityKey:', 'pubKey:', 'privKey:',
+    'Invalid media type', 'Error bye usuario:', 'Failed to decrypt message',
+    'Decrypted message with closed session', 'Bad MAC Error', 'Session error:',
+    'Got receipt', 'Got sender key', 'Got message with closed session',
+    'Unhandled receipt', 'Appending 0 messages', 'recv ', 'Queueing 1',
+    'Got unknown', 'Buffer', '<Buffer', 'closing stale open session',
+    'for new outgoing prekey bundle', 'chainKey', 'chainType', 'messageKeys',
+    'closed:', 'used:', 'created:'
 ]
-
-function iniciarFiltro() {
-    filtroActivo = true
-    process.stdout.write = (chunk, encoding, callback) => {
-        const str = chunk.toString()
-        if (iniciosFiltro.some(inicio => str.includes(inicio))) return true
-        return _stdoutWrite(chunk, encoding, callback)
-    }
-    process.stderr.write = (chunk, encoding, callback) => {
-        const str = chunk.toString()
-        if (iniciosFiltro.some(inicio => str.includes(inicio))) return true
-        return _stderrWrite(chunk, encoding, callback)
-    }
-}
-
-function detenerFiltro() {
-    if (!filtroActivo) return
-    filtroActivo = false
-    process.stdout.write = _stdoutWrite
-    process.stderr.write = _stderrWrite
-}
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
 const question = (texto) => new Promise((resolver) => rl.question(texto, resolver))
 
-// Variable global para el socket principal
 let sock = null
+let isConnecting = false
 
 async function start() {
+    if (isConnecting) return
+    isConnecting = true
+    
     const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys')
     const { version } = await fetchLatestBaileysVersion()
 
@@ -81,16 +59,22 @@ async function start() {
 
     if (!state.creds.registered) {
         console.clear()
-        const metodo = await question("Selecciona el método de vinculación:\n1. Código QR\n2. Código de 8 dígitos (Pairing Code)\nElige (1 o 2): ")
+        console.log(chalk.cyan.bold('═══════════════════════════════════════'))
+        console.log(chalk.cyan.bold(`       🤖 ${global.namebot || 'ASTA BOT'} • INICIO`))
+        console.log(chalk.cyan.bold('═══════════════════════════════════════\n'))
+        
+        const metodo = await question(chalk.yellow("Método de vinculación:\n") + 
+                                      chalk.white("1. ") + chalk.green("QR\n") + 
+                                      chalk.white("2. ") + chalk.green("Código 8 dígitos\n") + 
+                                      chalk.yellow("Elige (1/2): "))
         
         if (metodo.trim() === '2') {
             useQR = false
-            const numero = await question("Ingresa el número de WhatsApp (con código de país, ej. 521...): ")
+            const numero = await question(chalk.yellow("\nNúmero (con código país, ej. 521...): "))
             numeroLimpio = numero.replace(/[^0-9]/g, "")
         }
     }
 
-    // Crear el socket principal
     sock = makeWASocket({
         version,
         logger: Pino({ level: 'silent' }),
@@ -104,9 +88,7 @@ async function start() {
                 const msg = await store.loadMessage(key.remoteJid, key.id)
                 return msg?.message || undefined
             }
-            return {
-                conversation: 'Mensaje no disponible'
-            }
+            return { conversation: 'Mensaje no disponible' }
         }
     })
 
@@ -115,126 +97,83 @@ async function start() {
             try {
                 const codigo = await sock.requestPairingCode(numeroLimpio)
                 const codigoFormateado = codigo?.match(/.{1,4}/g)?.join("-") || codigo
-                console.log(`\n🔑 CÓDIGO DE VINCULACIÓN: ${codigoFormateado}\n`)
+                console.log(chalk.green.bold('\n═══════════════════════════════════════'))
+                console.log(chalk.green.bold(`🔑 CÓDIGO: ${codigoFormateado}`))
+                console.log(chalk.green.bold('═══════════════════════════════════════\n'))
             } catch (error) {
-                console.error("❌ Error al solicitar el código:", error.message)
+                console.error(chalk.red("❌ Error al solicitar código:"), error.message)
             }
         }, 3000)
     }
 
     store.bind(sock.ev)
 
-    // Plugin de LidSync si existe
-    sock = pluginLid(sock, { store, autoPurge: true })
-
-    // Evento de actualización de conexión - MANEJO CRÍTICO DEL ERROR 515
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update
 
         if (qr && useQR) {
-            console.log(chalk.cyan('Escanea el código QR para iniciar sesión...'))
+            console.log(chalk.cyan('📱 Escanea el QR...'))
         }
 
         if (connection === 'connecting') {
-            if (!filtroActivo) iniciarFiltro()
+            console.log(chalk.yellow('🔄 Conectando...'))
         }
         
         if (connection === 'open') {
-            detenerFiltro()
-            console.log(chalk.green('✅ Conexión establecida'))
+            isConnecting = false
+            console.log(chalk.green.bold('\n═══════════════════════════════════════'))
+            console.log(chalk.green.bold('✅ CONEXIÓN ESTABLECIDA'))
+            console.log(chalk.green.bold('═══════════════════════════════════════'))
             
-            try {
-                const lidStats = sock.lid && typeof sock.lid.getStats === 'function' ? sock.lid.getStats() : null
-                if (lidStats) {
-                    console.log(chalk.blue(`[LidSync] Cache inicializada: ${lidStats.size}/${lidStats.maxSize}`))
-                }
-            } catch {}
-
             if (global.isPremium) {
                 applyPremiumConfig(sock)
             } else {
-                resetToDefaultConfig(sock)
+                resetToDefaultConfig()
             }
             
             try {
                 const botId = sock.user?.id?.replace(/:.*@/, '@') || ''
+                const botName = sock.user?.name || global.namebot || 'Asta Bot'
                 if (botId) {
                     await sock.sendMessage(botId, {
-                        text: `🤖 *${global.namebot}* en línea\n📅 ${new Date().toLocaleString()}`
+                        text: `🤖 *${botName}* en línea\n📅 ${new Date().toLocaleString()}`
                     })
                 }
-            } catch {}
+                console.log(chalk.green(`👤 Bot: ${botName}`))
+                console.log(chalk.green(`📱 Número: ${sock.user?.jid?.split('@')[0] || 'Desconocido'}`))
+            } catch (e) {}
 
-            setTimeout(() => {
-                // Iniciar sub-bots automáticamente si es necesario
+            // Auto-iniciar sub-bots
+            setTimeout(async () => {
+                try {
+                    const { autoStartSubBots } = await import('./plugins/socket/serbot.js')
+                    await autoStartSubBots()
+                } catch (e) {}
             }, 5000)
         }
 
-        // MANEJO ESPECÍFICO DEL ERROR 515 Y RECONEXIÓN
         if (connection === 'close') {
             const statusCode = lastDisconnect?.error?.output?.statusCode
             
-            // Si es error 515, esperar a que las credenciales se guarden
+            if (statusCode === DisconnectReason.loggedOut) {
+                console.log(chalk.red('❌ SESIÓN CERRADA'))
+                console.log(chalk.yellow('Elimina auth_info_baileys y reinicia'))
+                process.exit(0)
+            }
+            
+            // Manejo optimizado del error 515
             if (statusCode === 515) {
-                console.log(chalk.yellow(`🔄 Error 515 detectado (Stream Errored). Esperando credenciales...`))
-                
-                // Esperar 3 segundos para asegurar que las credenciales se guarden en disco
-                await new Promise(resolve => setTimeout(resolve, 3000))
-                
-                // Volver a cargar el estado de autenticación
-                const { state: newState, saveCreds: newSaveCreds } = await useMultiFileAuthState('auth_info_baileys')
-                
-                // Crear nuevo socket con las credenciales frescas
-                const newSock = makeWASocket({
-                    version,
-                    logger: Pino({ level: 'silent' }),
-                    printQRInTerminal: useQR,
-                    auth: newState,
-                    browser: useQR ? ["Eris-MD", "Chrome", "1.0.0"] : ["Ubuntu", "Chrome", "22.04.4"],
-                    markOnlineOnConnect: true,
-                    generateHighQualityLinkPreview: true,
-                    getMessage: async (key) => {
-                        if (store) {
-                            const msg = await store.loadMessage(key.remoteJid, key.id)
-                            return msg?.message || undefined
-                        }
-                        return {
-                            conversation: 'Mensaje no disponible'
-                        }
-                    }
-                })
-                
-                // Transferir los listeners al nuevo socket
-                newSock.ev.on('creds.update', newSaveCreds)
-                
-                newSock.ev.on('messages.upsert', async (m) => {
-                    await handler(newSock, m)
-                })
-                
-                newSock.ev.on('group-participants.update', async (update) => {
-                    await onGroupUpdate(newSock, update)
-                })
-                
-                // Reemplazar el socket global
-                sock = newSock
-                
-                console.log(chalk.green('✅ Reconectado exitosamente después del error 515'))
+                console.log(chalk.yellow(`🔄 Error 515. Reconectando en 5s...`))
+                await new Promise(resolve => setTimeout(resolve, 5000))
+                isConnecting = false
+                start()
                 return
             }
             
-            // Para otros errores, comportamiento normal
-            if (statusCode !== DisconnectReason.loggedOut) {
-                console.log(chalk.yellow('🔄 Reconectando por otro motivo...'))
-                if (sock.lid && typeof sock.lid.destroy === 'function') {
-                    sock.lid.destroy()
-                }
-                // Pequeña pausa antes de reiniciar
-                await new Promise(resolve => setTimeout(resolve, 2000))
-                start()
-            } else {
-                console.log(chalk.red('❌ Sesión cerrada permanentemente'))
-                process.exit(0)
-            }
+            console.log(chalk.yellow(`🔄 Reconectando... (${statusCode || '?'})`))
+            await new Promise(resolve => setTimeout(resolve, 3000))
+            isConnecting = false
+            start()
         }
     })
 
@@ -251,4 +190,20 @@ async function start() {
     return sock
 }
 
-start()
+start().catch(err => {
+    console.error(chalk.red('❌ Error fatal:'), err)
+    process.exit(1)
+})
+
+process.on('SIGINT', () => {
+    console.log(chalk.yellow('\n🛑 Bot detenido'))
+    process.exit(0)
+})
+
+process.on('uncaughtException', (err) => {
+    console.error(chalk.red('❌ Error:'), err.message)
+})
+
+process.on('unhandledRejection', (reason) => {
+    console.error(chalk.red('❌ Promesa rechazada:'), reason)
+})

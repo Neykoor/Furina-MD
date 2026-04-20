@@ -1,18 +1,17 @@
-global.namebot = 'Asta Bot'
+global.namebot = '『𝕬𝖘𝖙𝖆-𝕭𝖔𝖙』'
 global.vs = '2.0.0'
 global.prefix = '.'
 global.libreria = 'Baileys Multi Device'
 
-global.dev = '𝕱𝖊𝖗𝖓𝖆𝖓𝖉𝖔'
+global.dev = 'Powered By ғᴇʀɴᴀɴᴅᴏ'
 global.etiqueta = '𝕱𝖊𝖗𝖓𝖆𝖓𝖉𝖔'
+global.author = "『𝕬𝖘𝖙𝖆-𝕭𝖔𝖙』 • Powered By 𝕱𝖊𝖗𝖓𝖆𝖓𝖉𝖔"
 
-// Owners globales - pueden ser números o JIDs completos
 global.owner = [
   ['5214183357841', 'Fernando', true],
   ['5216631079388', 'neykoor', true]
 ]
 
-// Enlaces por defecto
 global.channel = 'https://whatsapp.com/channel/0029VbAoYE99hXF1wm3zmQ21'
 global.IDchannel = '120363399175402285@newsletter'
 global.github = 'https://github.com/Fer280809/asta-.git'
@@ -22,11 +21,9 @@ global.icono = 'https://raw.githubusercontent.com/Fer280809/Asta_bot/main/lib/ca
 global.firma = '© Asta Bot - Todos los derechos reservados'
 global.logo = 'https://raw.githubusercontent.com/Fer280809/Asta_bot/main/lib/catalogo.jpg'
 
-// Opciones
 global.modoPublico = true
 global.antiPrivado = false
 
-// Mensajes personalizados
 global.msj = {
   espera: '⏳ Procesando...',
   error: '❌ Error al ejecutar el comando',
@@ -37,7 +34,6 @@ global.msj = {
   validcommand: '❌ Este comando *${cmd}* no existe'
 }
 
-// Base de datos temporal
 global.db = { data: { users: {} } }
 global.plugins = {}
 

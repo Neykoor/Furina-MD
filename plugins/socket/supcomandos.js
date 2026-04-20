@@ -20,7 +20,6 @@ async function cleanupSession(sessionPath, userId) {
     global.sentCodes?.delete(userId)
     global.subBotReconnectAttempts?.delete(userId)
     
-    // Limpiar todas las referencias
     if (global.subBots) {
         for (const [key, sock] of global.subBots) {
             if (sock?.userId === userId || sock?.ownerId === userId) {
@@ -30,18 +29,11 @@ async function cleanupSession(sessionPath, userId) {
     }
 }
 
-// Verificación REAL del estado de conexión
 function checkRealConnectionStatus(sock) {
     if (!sock) return false
-    
     try {
-        // Verificar WebSocket
         const wsOpen = sock.ws && (sock.ws.readyState === 1 || sock.ws.readyState === 'OPEN')
-        // Verificar usuario autenticado
         const hasUser = sock.user && (sock.user.jid || sock.user.id)
-        // Verificar estado de conexión
-        const connOpen = sock.connOpen || sock.connection === 'open'
-        
         return wsOpen && hasUser
     } catch (e) {
         return false
@@ -59,7 +51,6 @@ async function listSubBots(m, { conn, usedPrefix, args }) {
     const userSubBots = []
     const seenJids = new Set()
     
-    // Recopilar sub-bots únicos con verificación real de estado
     for (const [key, data] of global.subBotsData) {
         if (!data?.userId) continue
         
@@ -71,20 +62,16 @@ async function listSubBots(m, { conn, usedPrefix, args }) {
         
         if (!showAll && ownerNormalized !== userId) continue
         
-        // Buscar socket asociado
         let sock = global.subBots.get(data.userId) || 
                    global.subBots.get(targetJid) || 
                    global.subBots.get(key)
         
-        // Verificación REAL del estado
         const isConnected = checkRealConnectionStatus(sock)
         
-        // Actualizar data si cambió el estado
         if (data.isConnected !== isConnected) {
             data.isConnected = isConnected
             data.lastCheck = Date.now()
             global.subBotsData.set(key, data)
-            // Sincronizar en otras keys
             if (data.userId) global.subBotsData.set(data.userId, data)
             if (data.jid) global.subBotsData.set(data.jid, data)
         }
@@ -132,7 +119,6 @@ async function deleteSubBot(m, { conn, args, usedPrefix }) {
     const userId = normalize(m.sender)
     const targetId = args[0] ? normalize(args[0]) : userId
 
-    // Buscar en todas las keys posibles
     let targetData = null
     let targetSock = null
     
@@ -242,7 +228,6 @@ async function restartSubBot(m, { conn, args, usedPrefix }) {
         if (targetSock.ws) targetSock.ws.close()
     } catch (e) {}
 
-    // Limpiar referencias
     global.subBots.delete(targetId)
     global.subBotsData.delete(targetId)
     if (targetData?.jid) {

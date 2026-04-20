@@ -10,10 +10,14 @@ import {
     isPremium, 
     isSubbotPremium, 
     applyPremiumConfig,
+    applySubbotConfig,
     getBotConfig,
     setBotConfig,
     normalize,
-    isAllowedSubbot
+    isAllowedSubbot,
+    isGlobalOwner,
+    getPremiumOwnerOfSubbot,
+    getDefaultConfig
 } from '../../lib/premium.js'
 
 const {
@@ -55,7 +59,6 @@ const mensajeCode = `╭─[ 💻 𝘼𝙎𝙏𝘼 𝘽𝙊𝙏 • 𝙈𝙊𝘿
 │  ⏳  *Expira en 60 segundos.*
 ╰────────────────────────╯`
 
-// Inicializar estructuras globales
 if (!global.conns) global.conns = []
 if (!global.subBots) global.subBots = new Map()
 if (!global.subBotsData) global.subBotsData = new Map()
@@ -64,7 +67,6 @@ if (!global.subBotReconnectAttempts) global.subBotReconnectAttempts = new Map()
 
 const SUBBOT_FOLDER = './sessions/subbots'
 
-// Filtro de errores silenciados
 const SILENT_ERRORS = [
     'Bad MAC', 'Failed to decrypt', 'Session error', 'decryptWithSessions',
     'verifyMAC', 'SessionEntry', 'Closing session', 'Closing open session',
@@ -74,7 +76,6 @@ const SILENT_ERRORS = [
     'stream errored', 'connection closed'
 ]
 
-// Sobrescribir console.error para silenciar errores de cifrado
 const originalError = console.error
 console.error = function(...args) {
     const msg = args.join(' ')
@@ -87,17 +88,14 @@ function delay(ms) {
 }
 
 function isSubBotConnected(jid) {
-    if (!global.subBots || global.subBots.size === 0) return false
+    if (!global.subBots?.size) return false
     const targetJid = normalize(jid)
-    
     for (const [id, sock] of global.subBots) {
         try {
-            if (!sock || !sock.user) continue
+            if (!sock?.user) continue
             const sockId = normalize(sock.user.jid || sock.user.id || id)
             if (sockId === targetJid) {
-                const isWsOpen = sock.ws && (sock.ws.readyState === 1 || sock.ws.readyState === 'OPEN')
-                const isAuth = sock.user?.jid || sock.user?.id
-                return isWsOpen && isAuth
+                return sock.ws && (sock.ws.readyState === 1 || sock.ws.readyState === 'OPEN') && (sock.user?.jid || sock.user?.id)
             }
         } catch { continue }
     }
@@ -147,7 +145,6 @@ async function sendCodeCopyButton(conn, jid, code, botName, quoted) {
     }
 }
 
-// ============ CONFIGURAR HANDLER PARA SUB-BOT ============
 async function setupSubBotHandler(sock, userId, conn) {
     let handlerModule = null
     const possiblePaths = [
@@ -156,7 +153,7 @@ async function setupSubBotHandler(sock, userId, conn) {
         '../../lib/handler.js',
         '../../../../lib/handler.js'
     ]
-    
+
     for (const handlerPath of possiblePaths) {
         try {
             const fileUrl = pathToFileURL(handlerPath).href
@@ -164,38 +161,39 @@ async function setupSubBotHandler(sock, userId, conn) {
             if (handlerModule?.handler) break
         } catch (e) { continue }
     }
-    
+
     if (!handlerModule?.handler) {
         console.error(chalk.red(`❌ Handler no encontrado en sub-bot ${userId}`))
         return
     }
 
-    // Marcar como sub-bot explícitamente
     sock.isSubBot = true
     sock.isMainBot = false
     sock.ownerId = userId
 
-    // Escuchar mensajes
     sock.ev.on('messages.upsert', async (m) => {
         try {
             if (!m?.messages?.length) return
-            
+
             const botNumber = normalize(sock.user?.jid || '')
-            const isPremiumSub = isSubbotPremium(botNumber) || isPremium(userId)
+            const premiumOwner = getPremiumOwnerOfSubbot(botNumber)
             
-            // Verificar si el sub-bot está permitido
-            const isAllowed = isAllowedSubbot(botNumber, userId)
-            if (!isAllowed) {
-                console.log(chalk.yellow(`⛔ Sub-bot ${botNumber} no permitido para ${userId}`))
-                return
+            if (premiumOwner && isAllowedSubbot(botNumber, premiumOwner)) {
+                applySubbotConfig(botNumber, premiumOwner)
+            } else {
+                const def = getDefaultConfig()
+                global.namebot = def.namebot
+                global.channel = def.channel
+                global.IDchannel = def.IDchannel
+                global.grupo = def.grupo
+                global.comunidad = def.comunidad
+                global.icono = def.icono
+                global.logo = def.logo
+                global.firma = def.firma
             }
-            
-            if (isPremiumSub) {
-                applyPremiumConfig(userId)
-            }
-            
+
             await handlerModule.handler(sock, m)
-            
+
         } catch (err) {
             const msg = err?.message || ''
             if (!SILENT_ERRORS.some(p => msg.includes(p))) {
@@ -214,7 +212,6 @@ async function setupSubBotHandler(sock, userId, conn) {
     console.log(chalk.green(`✅ Handler configurado para sub-bot ${userId}`))
 }
 
-// ============ FUNCIÓN PRINCIPAL CREAR SUB-BOT ============
 export async function createSubBot(options) {
     let {
         sessionPath,
@@ -230,7 +227,7 @@ export async function createSubBot(options) {
 
     const { version } = await fetchLatestBaileysVersion()
     const msgRetryCache = new NodeCache({ stdTTL: 0, checkperiod: 0 })
-    
+
     let state, saveCreds
     try {
         const auth = await useMultiFileAuthState(sessionPath)
@@ -280,15 +277,15 @@ export async function createSubBot(options) {
     const cleanup = async (fullCleanup = false) => {
         if (qrTimer) clearTimeout(qrTimer)
         if (connectionTimer) clearTimeout(connectionTimer)
-        
+
         try {
             sock.ev.removeAllListeners()
             if (sock.ws?.readyState === 1) sock.ws.close()
         } catch (e) {}
-        
+
         const index = global.conns.indexOf(sock)
         if (index > -1) global.conns.splice(index, 1)
-        
+
         const botJid = sock.user?.jid
         if (botJid) {
             global.subBots.delete(botJid)
@@ -297,7 +294,7 @@ export async function createSubBot(options) {
         global.subBots.delete(userId)
         global.subBotsData.delete(userId)
         global.sentCodes.delete(userId)
-        
+
         if (fullCleanup && !isConnected) {
             try {
                 if (fs.existsSync(sessionPath)) {
@@ -310,7 +307,7 @@ export async function createSubBot(options) {
     connectionTimer = setTimeout(async () => {
         if (!isConnected && !isAutoStart) {
             await cleanup(true)
-            if (m) await conn.sendMessage(m.chat, { text: '⏰ Tiempo de espera agotado.' }, { quoted: m })
+            if (m) await conn.sendMessage(m.chat, { text: '⏰ Tiempo agotado.' }, { quoted: m })
         }
     }, 60000)
 
@@ -372,23 +369,22 @@ export async function createSubBot(options) {
             const userJid = sock.user?.jid || `${userId}@s.whatsapp.net`
             const userNumber = userJid.split('@')[0]
 
-            // Verificar si el sub-bot está permitido
             const isAllowed = isAllowedSubbot(userNumber, ownerId)
             if (!isAllowed) {
                 console.log(chalk.red(`⛔ Sub-bot ${userNumber} no permitido para ${ownerId}. Desconectando...`))
                 await conn.sendMessage(m.chat, { 
-                    text: `❌ Este sub-bot no está permitido en tu cuenta premium.\nUsa *${usedPrefix}configsupbot permitir ${userNumber}* para permitirlo.` 
+                    text: `❌ Sub-bot no permitido.\nUsa *${usedPrefix}config supbot permitir ${userNumber}*` 
                 }, { quoted: m })
                 await cleanup(true)
                 return
             }
 
             if (!global.conns.includes(sock)) global.conns.push(sock)
-            
+
             global.subBots.set(userJid, sock)
             global.subBots.set(userId, sock)
             global.subBots.set(userNumber, sock)
-            
+
             const botData = {
                 owner: ownerId,
                 connectedAt: Date.now(),
@@ -398,7 +394,7 @@ export async function createSubBot(options) {
                 wsReady: true,
                 state: 'connected'
             }
-            
+
             global.subBotsData.set(userJid, botData)
             global.subBotsData.set(userId, botData)
             global.subBotsData.set(userNumber, botData)
@@ -407,15 +403,20 @@ export async function createSubBot(options) {
 
             const isPremiumUser = isPremium(ownerId)
             const isAlreadySubPrem = isSubbotPremium(userNumber)
-            
+
             if (isPremiumUser && !isAlreadySubPrem) {
                 const { setSubbotPremium } = await import('../../lib/premium.js')
                 await setSubbotPremium(ownerId, userNumber)
                 console.log(chalk.cyan(`👑 Sub-bot ${userNumber} auto-asignado como premium`))
             }
-            
+
             if (isPremiumUser || isAlreadySubPrem) {
-                applyPremiumConfig(ownerId)
+                const premiumOwner = getPremiumOwnerOfSubbot(userNumber)
+                if (premiumOwner && isAllowedSubbot(userNumber, premiumOwner)) {
+                    applySubbotConfig(userNumber, premiumOwner)
+                } else {
+                    applyPremiumConfig(isAlreadySubPrem ? userNumber : ownerId)
+                }
             }
 
             await setupSubBotHandler(sock, userId, conn)
@@ -435,7 +436,7 @@ export async function createSubBot(options) {
 
         if (connection === 'close') {
             const statusCode = lastDisconnect?.error?.output?.statusCode
-            
+
             const botJid = sock.user?.jid
             if (botJid && global.subBotsData.has(botJid)) {
                 const data = global.subBotsData.get(botJid)
@@ -447,17 +448,17 @@ export async function createSubBot(options) {
             if (statusCode === 515 && reconnectAttempts < maxReconnectAttempts) {
                 reconnectAttempts++
                 console.log(chalk.yellow(`🔄 Error 515. Reconectando... (${reconnectAttempts}/${maxReconnectAttempts})`))
-                
+
                 await delay(5000 * reconnectAttempts)
-                
+
                 try {
                     const { state: newState, saveCreds: newSaveCreds } = await useMultiFileAuthState(sessionPath)
-                    
+
                     if (!newState.creds.registered) {
                         await cleanup(true)
                         return
                     }
-                    
+
                     const newSock = makeWASocket({
                         logger: pino({ level: 'silent' }),
                         printQRInTerminal: false,
@@ -473,31 +474,31 @@ export async function createSubBot(options) {
                         connectTimeoutMs: 60000,
                         keepAliveIntervalMs: 30000
                     })
-                    
+
                     newSock.userId = userId
                     newSock.isSubBot = true
                     newSock.isMainBot = false
                     newSock.ownerId = ownerId
-                    
+
                     newSock.ev.on('creds.update', newSaveCreds)
                     newSock.ev.on('connection.update', connectionUpdate)
-                    
+
                     await setupSubBotHandler(newSock, userId, conn)
-                    
+
                     const oldIndex = global.conns.indexOf(sock)
                     if (oldIndex > -1) global.conns[oldIndex] = newSock
-                    
+
                     if (botJid) global.subBots.delete(botJid)
                     global.subBots.set(userId, newSock)
-                    
+
                     sock = newSock
-                    
+
                 } catch (err) {
                     await cleanup(true)
                 }
                 return
             }
-            
+
             if (!isConnected) {
                 await cleanup(true)
             } else {
@@ -521,23 +522,23 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
 
     const isPremiumUser = isPremium(userId)
     let userSubBotCount = 0
-    
+
     for (const [key, data] of global.subBotsData || []) {
         if (data?.owner && normalize(data.owner) === userId) {
             userSubBotCount++
         }
     }
-    
+
     if (!isPremiumUser && userSubBotCount >= 1) {
         return conn.sendMessage(m.chat, {
-            text: `⚠️ Máximo 1 sub-bot gratis.\n👑 Premium: hasta 5 sub-bots.`,
+            text: `⚠️ Máximo 1 sub-bot gratis.\n👑 Premium: hasta 5.`,
             mentions: [m.sender]
         }, { quoted: m })
     }
-    
+
     if (isPremiumUser && userSubBotCount >= 5) {
         return conn.sendMessage(m.chat, {
-            text: `⚠️ Máximo 5 sub-bots.\nElimina uno con *${usedPrefix}delsub*`,
+            text: `⚠️ Máximo 5 sub-bots.\nElimina con *${usedPrefix}delsub*`,
             mentions: [m.sender]
         }, { quoted: m })
     }
@@ -560,7 +561,7 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
     } catch (e) {
         return conn.sendMessage(m.chat, { text: '❌ Error al crear sesión.' }, { quoted: m })
     }
-    
+
     global.sentCodes.delete(userId)
 
     await conn.sendMessage(m.chat, { 

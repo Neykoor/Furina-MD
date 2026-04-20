@@ -92,6 +92,11 @@ async function start() {
         }
     })
 
+    // MARCAR COMO BOT PRINCIPAL EXPLÍCITAMENTE
+    sock.isMainBot = true
+    sock.isSubBot = false
+    sock.ownerId = null
+
     if (!useQR && !state.creds.registered) {
         setTimeout(async () => {
             try {
@@ -124,6 +129,7 @@ async function start() {
             console.log(chalk.green.bold('\n═══════════════════════════════════════'))
             console.log(chalk.green.bold('✅ CONEXIÓN ESTABLECIDA'))
             console.log(chalk.green.bold('═══════════════════════════════════════'))
+            console.log(chalk.blue('🤖 MODO: BOT PRINCIPAL'))
             
             if (global.isPremium) {
                 applyPremiumConfig(sock)
@@ -136,14 +142,13 @@ async function start() {
                 const botName = sock.user?.name || global.namebot || 'Asta Bot'
                 if (botId) {
                     await sock.sendMessage(botId, {
-                        text: `🤖 *${botName}* en línea\n📅 ${new Date().toLocaleString()}`
+                        text: `🤖 *${botName}* en línea\n📅 ${new Date().toLocaleString()}\n🤖 Modo: Principal`
                     })
                 }
                 console.log(chalk.green(`👤 Bot: ${botName}`))
                 console.log(chalk.green(`📱 Número: ${sock.user?.jid?.split('@')[0] || 'Desconocido'}`))
             } catch (e) {}
 
-            // Auto-iniciar sub-bots
             setTimeout(async () => {
                 try {
                     const { autoStartSubBots } = await import('./plugins/socket/serbot.js')
@@ -161,7 +166,6 @@ async function start() {
                 process.exit(0)
             }
             
-            // Manejo optimizado del error 515
             if (statusCode === 515) {
                 console.log(chalk.yellow(`🔄 Error 515. Reconectando en 5s...`))
                 await new Promise(resolve => setTimeout(resolve, 5000))

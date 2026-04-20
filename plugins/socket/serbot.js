@@ -7,12 +7,13 @@ import pino from 'pino'
 import chalk from 'chalk'
 import { fileURLToPath, pathToFileURL } from 'url'
 import { 
-  isPremium, 
-  isSubbotPremium, 
-  applyPremiumConfig,
-  getBotConfig,
-  setBotConfig,
-  normalize 
+    isPremium, 
+    isSubbotPremium, 
+    applyPremiumConfig,
+    getBotConfig,
+    setBotConfig,
+    normalize,
+    isAllowedSubbot
 } from '../../lib/premium.js'
 
 const {
@@ -94,7 +95,6 @@ function isSubBotConnected(jid) {
             if (!sock || !sock.user) continue
             const sockId = normalize(sock.user.jid || sock.user.id || id)
             if (sockId === targetJid) {
-                // Verificación real del WebSocket
                 const isWsOpen = sock.ws && (sock.ws.readyState === 1 || sock.ws.readyState === 'OPEN')
                 const isAuth = sock.user?.jid || sock.user?.id
                 return isWsOpen && isAuth
@@ -141,7 +141,6 @@ async function sendCodeCopyButton(conn, jid, code, botName, quoted) {
         await conn.relayMessage(jid, msg.message, { messageId: msg.key.id })
         return msg
     } catch (e) {
-        // Fallback si falla el botón interactivo
         await conn.sendMessage(jid, { 
             text: `📋 *Código:* \`${code}\`\n\n_Toca y mantén para copiar_` 
         }, { quoted })
@@ -171,8 +170,9 @@ async function setupSubBotHandler(sock, userId, conn) {
         return
     }
 
-    // Marcar como sub-bot
+    // Marcar como sub-bot explícitamente
     sock.isSubBot = true
+    sock.isMainBot = false
     sock.ownerId = userId
 
     // Escuchar mensajes
@@ -180,15 +180,20 @@ async function setupSubBotHandler(sock, userId, conn) {
         try {
             if (!m?.messages?.length) return
             
-            // Verificar si el sub-bot tiene premium
             const botNumber = normalize(sock.user?.jid || '')
             const isPremiumSub = isSubbotPremium(botNumber) || isPremium(userId)
+            
+            // Verificar si el sub-bot está permitido
+            const isAllowed = isAllowedSubbot(botNumber, userId)
+            if (!isAllowed) {
+                console.log(chalk.yellow(`⛔ Sub-bot ${botNumber} no permitido para ${userId}`))
+                return
+            }
             
             if (isPremiumSub) {
                 applyPremiumConfig(userId)
             }
             
-            // Ejecutar handler
             await handlerModule.handler(sock, m)
             
         } catch (err) {
@@ -199,7 +204,6 @@ async function setupSubBotHandler(sock, userId, conn) {
         }
     })
 
-    // Eventos de grupo
     sock.ev.on('group-participants.update', async (update) => {
         try {
             const { onGroupUpdate } = await import('../eventos/group-events.js')
@@ -263,6 +267,7 @@ export async function createSubBot(options) {
 
     sock.userId = userId
     sock.isSubBot = true
+    sock.isMainBot = false
     sock.ownerId = ownerId
 
     let qrTimer = null
@@ -367,9 +372,19 @@ export async function createSubBot(options) {
             const userJid = sock.user?.jid || `${userId}@s.whatsapp.net`
             const userNumber = userJid.split('@')[0]
 
+            // Verificar si el sub-bot está permitido
+            const isAllowed = isAllowedSubbot(userNumber, ownerId)
+            if (!isAllowed) {
+                console.log(chalk.red(`⛔ Sub-bot ${userNumber} no permitido para ${ownerId}. Desconectando...`))
+                await conn.sendMessage(m.chat, { 
+                    text: `❌ Este sub-bot no está permitido en tu cuenta premium.\nUsa *${usedPrefix}configsupbot permitir ${userNumber}* para permitirlo.` 
+                }, { quoted: m })
+                await cleanup(true)
+                return
+            }
+
             if (!global.conns.includes(sock)) global.conns.push(sock)
             
-            // Guardar en múltiples índices para fácil acceso
             global.subBots.set(userJid, sock)
             global.subBots.set(userId, sock)
             global.subBots.set(userNumber, sock)
@@ -403,7 +418,6 @@ export async function createSubBot(options) {
                 applyPremiumConfig(ownerId)
             }
 
-            // Configurar handler para procesar comandos
             await setupSubBotHandler(sock, userId, conn)
 
             if (!isAutoStart && m?.chat) {
@@ -422,7 +436,6 @@ export async function createSubBot(options) {
         if (connection === 'close') {
             const statusCode = lastDisconnect?.error?.output?.statusCode
             
-            // Actualizar estado a desconectado
             const botJid = sock.user?.jid
             if (botJid && global.subBotsData.has(botJid)) {
                 const data = global.subBotsData.get(botJid)
@@ -463,6 +476,7 @@ export async function createSubBot(options) {
                     
                     newSock.userId = userId
                     newSock.isSubBot = true
+                    newSock.isMainBot = false
                     newSock.ownerId = ownerId
                     
                     newSock.ev.on('creds.update', newSaveCreds)
@@ -470,7 +484,6 @@ export async function createSubBot(options) {
                     
                     await setupSubBotHandler(newSock, userId, conn)
                     
-                    // Reemplazar en arrays
                     const oldIndex = global.conns.indexOf(sock)
                     if (oldIndex > -1) global.conns[oldIndex] = newSock
                     

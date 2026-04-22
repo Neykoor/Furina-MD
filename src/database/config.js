@@ -15,7 +15,7 @@ export const config = {
 
   channel: 'https://whatsapp.com/channel/0029VbAoYE99hXF1wm3zmQ21',
   IDchannel: '120363399175402285@newsletter',
-  github: 'https://github.com/Fer280809/asta-.git',
+  github: 'https://github.com/Fer2809fl/asta-.git',
   grupo: 'https://chat.whatsapp.com/CErS5aOt9Ws61C9UpFPzdC',
   comunidad: 'https://chat.whatsapp.com/KKwDZn5vDAE6MhZFAcVQeO',
   icono: 'https://raw.githubusercontent.com/Fer280809/Asta_bot/main/lib/catalogo.jpg',

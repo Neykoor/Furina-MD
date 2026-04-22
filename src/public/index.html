@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asta Bot - Web Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body class="landing">
+    <div class="bg-animation">
+        <div class="bg-grid"></div>
+        <div class="bg-glow"></div>
+    </div>
+
+    <nav class="navbar">
+        <div class="nav-brand">
+            <img id="logo-img" src="" alt="Asta Bot" class="nav-logo">
+            <span class="nav-title">Asta Bot</span>
+        </div>
+        <div class="nav-links">
+            <a href="#features">Características</a>
+            <a href="#owners">Creadores</a>
+            <a href="/login" class="btn-primary">Iniciar Sesión</a>
+        </div>
+    </nav>
+
+    <main>
+        <section class="hero">
+            <div class="hero-content">
+                <div class="badge">🆕 Nuevo Bot 24/7</div>
+                <h1 class="hero-title">
+                    <span class="gradient-text">Asta Bot</span>
+                    <br>Ahora con Web Dashboard
+                </h1>
+                <p class="hero-desc">
+                    Controla tu Sub-Bot desde cualquier lugar. Gestiona grupos, configura tu bot,
+                    y disfruta de comandos mejorados con panel visual.
+                </p>
+                <div class="hero-buttons">
+                    <a href="/login" class="btn-glow">🚀 Acceder al Panel</a>
+                    <button onclick="scrollToSection('request-bot')" class="btn-outline">
+                        📱 Solicitar Bot
+                    </button>
+                </div>
+            </div>
+            <div class="hero-visual">
+                <div class="phone-mockup">
+                    <div class="phone-screen">
+                        <div class="chat-header">
+                            <img id="icono-img" src="" class="chat-avatar">
+                            <div class="chat-info">
+                                <span class="chat-name">Asta Bot</span>
+                                <span class="chat-status">🟢 En línea</span>
+                            </div>
+                        </div>
+                        <div class="chat-messages">
+                            <div class="msg bot">
+                                <span class="msg-text">¡Hola! Soy Asta Bot 🤖</span>
+                            </div>
+                            <div class="msg bot">
+                                <span class="msg-text">Usa #menu para ver comandos</span>
+                            </div>
+                            <div class="msg user">
+                                <span class="msg-text">#menu</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="features" class="features">
+            <h2 class="section-title">✨ Características</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🤖</div>
+                    <h3>Sub-Bots 24/7</h3>
+                    <p>Crea tu propio bot que permanece conectado todo el tiempo</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🌐</div>
+                    <h3>Panel Web</h3>
+                    <p>Administra tu bot desde cualquier dispositivo con navegador</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">👥</div>
+                    <h3>Gestión de Grupos</h3>
+                    <p>Ve en qué grupos está tu bot y configura cada uno</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎮</div>
+                    <h3>Juegos RPG & Gacha</h3>
+                    <p>Sistema completo de economía, juegos y coleccionables</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🖼️</div>
+                    <h3>Personalización</h3>
+                    <p>Sube tus propios logos y configura la apariencia</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>Anti-Spam</h3>
+                    <p>Protección automática contra spam y abusos</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="owners" class="owners">
+            <h2 class="section-title">👑 Creadores</h2>
+            <div class="owners-list" id="owners-list">
+                <!-- Se llena dinámicamente -->
+            </div>
+        </section>
+
+        <section id="request-bot" class="request-section">
+            <h2 class="section-title">📱 Solicitar Sub-Bot</h2>
+            <div class="request-card">
+                <div class="request-tabs">
+                    <button class="tab-btn active" onclick="switchTab('qr')">📷 QR Code</button>
+                    <button class="tab-btn" onclick="switchTab('code')">🔢 Código</button>
+                </div>
+
+                <div id="tab-qr" class="tab-content active">
+                    <p class="tab-desc">Escanea el QR desde WhatsApp > Dispositivos vinculados</p>
+                    <input type="tel" id="qr-phone" placeholder="+52 1 234 567 890" class="input-field">
+                    <button onclick="requestQR()" class="btn-glow">Generar QR</button>
+                    <div id="qr-result" class="result-area"></div>
+                </div>
+
+                <div id="tab-code" class="tab-content">
+                    <p class="tab-desc">Recibe un código de 8 dígitos para vincular</p>
+                    <input type="tel" id="code-phone" placeholder="+52 1 234 567 890" class="input-field">
+                    <button onclick="requestCode()" class="btn-glow">Generar Código</button>
+                    <div id="code-result" class="result-area"></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="stats-section">
+            <div class="stats-grid" id="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-number" id="stat-bots">0</span>
+                    <span class="stat-label">Bots Activos</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="stat-users">0</span>
+                    <span class="stat-label">Usuarios</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="stat-uptime">0h</span>
+                    <span class="stat-label">Uptime</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>Powered by <span class="gradient-text">Asta Bot</span> © 2024</p>
+    </footer>
+
+    <script src="js/main.js"></script>
+</body>
+
+</html>

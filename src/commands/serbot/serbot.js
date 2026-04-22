@@ -873,16 +873,6 @@ handler.tags = ['serbot']
 handler.command = ['qr', 'code', 'subbot']
 
 // ═══════════════════════════════════════════════════════════════════
-// EXPORTACIONES
+// EXPORTACIÓN ÚNICA (handler por defecto)
 // ═══════════════════════════════════════════════════════════════════
-export {
-    cleanNum,
-    getSubConfig,
-    saveSubConfig,
-    cleanSubBotCache,
-    isSubBotConnected,
-    createSubBot,
-    autoStartSubBots
-}
-
 export default handler

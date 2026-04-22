@@ -10,7 +10,8 @@ export const config = {
 
   owner: [
     ['5214183357841', 'Fernando', true],
-    ['5216631079388', 'neykoor', true]
+    ['5356795360', 'Victor' true],
+    ['5216631079388', 'Neykoor', true]
   ],
 
   channel: 'https://whatsapp.com/channel/0029VbAoYE99hXF1wm3zmQ21',

@@ -43,7 +43,7 @@ npm start
 
 ## 📄 Licencia
 
-MIT — Ver archivo `LICENSE`.
+GPL 3 — Ver archivo `LICENSE`.
 
 ---
 

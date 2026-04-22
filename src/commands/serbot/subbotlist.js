@@ -37,7 +37,7 @@ function getSubBotInfo(sock) {
     }
 }
 
-let handler = async (m, { conn, usedPrefix, command }) => {
+let handler = async (m, { conn, command }) => {
     const from = m.chat
 
     const isOwner = global.owner && global.owner.some(o => {
@@ -48,8 +48,8 @@ let handler = async (m, { conn, usedPrefix, command }) => {
     const showAll = isOwner && (command === 'allbots' || command === 'listall')
 
     if (!global.subBots || global.subBots.size === 0) {
-        return conn.sendMessage(from, { 
-            text: '📭 *No hay sub-bots conectados.*\n\nUsa *.qr* o *.code* para crear uno.' 
+        return conn.sendMessage(from, {
+            text: '📭 *No hay sub-bots conectados.*\n\nUsa *.qr* o *.code* para crear uno.'
         }, { quoted: m })
     }
 
@@ -90,15 +90,15 @@ let handler = async (m, { conn, usedPrefix, command }) => {
     }
 
     if (count === 0) {
-        return conn.sendMessage(from, { 
-            text: '📭 *No tienes sub-bots conectados.*\n\nUsa *.qr* o *.code* para crear uno.' 
+        return conn.sendMessage(from, {
+            text: '📭 *No tienes sub-bots conectados.*\n\nUsa *.qr* o *.code* para crear uno.'
         }, { quoted: m })
     }
 
     txt += `📊 *Total:* ${count} sub-bot${count !== 1 ? 's' : ''}\n\n`
 
     if (!showAll && isOwner) {
-        txt += `👑 Usa *${usedPrefix}allbots* para ver todos.`
+        txt += `👑 Usa *.allbots* para ver todos.`
     }
 
     await conn.sendMessage(from, { text: txt.trim() }, { quoted: m })
@@ -108,4 +108,4 @@ handler.help = ['bots', 'listbots', 'misbots', 'allbots']
 handler.tags = ['serbot']
 handler.command = ['bots', 'listbots', 'misbots', 'allbots']
 
-export default handler
+export default handler;

@@ -6,20 +6,28 @@ const execAsync = promisify(exec)
 let handler = async (m, { conn }) => {
     const start = Date.now()
     
-    // 1. Intentar resolver el remitente para probar la librería
+    const isInstalled = !!conn.lid
     let sender = m.key.participant || m.key.remoteJid
-    let resuelto = 'No es un LID'
-    
-    if (sender.endsWith('@lid')) {
+    let resuelto = 'Es número normal'
+    let statusResolucion = '➖ No requiere resolución'
+
+    if (isInstalled && sender.endsWith('@lid')) {
         const info = await conn.lid.resolve(sender)
-        resuelto = info ? info : 'No se pudo resolver'
+        if (info) {
+            resuelto = info
+            statusResolucion = '✅ Resuelto con éxito'
+        } else {
+            resuelto = 'Desconocido'
+            statusResolucion = '⚠️ Falta historial en Store'
+        }
     }
+
+    const stats = isInstalled && typeof conn.lid.getStats === 'function' ? conn.lid.getStats() : {}
+    const cacheSize = stats.size ?? 0
+    const hitRate = stats.hitRate ?? '0%'
 
     const end = Date.now()
     const botPing = end - start
-
-    // 2. Obtener estadísticas del resolver
-    const stats = conn.lid.getStats()
 
     let serverPing = 0
     try {
@@ -30,22 +38,24 @@ let handler = async (m, { conn }) => {
         serverPing = 0
     }
 
-    const uptime = process.uptime()
-    const hours = Math.floor(uptime / 3600)
-    const minutes = Math.floor((uptime % 3600) / 60)
-
-    let text = `*🧪 PRUEBA DE LIDSYNC*\n\n`
-    text += `*ID Remitente:* ${sender}\n`
-    text += `*Resolución:* ${resuelto}\n\n`
+    let text = `*🧪 DIAGNÓSTICO DE LIDSYNC*\n\n`
     
-    text += `*📊 ESTADO LIBRERÍA*\n`
-    text += `- Cache: ${stats.size} entradas\n`
-    text += `- Tasa de acierto: ${stats.hitRate}\n\n`
+    text += `*🔧 ESTADO DEL SISTEMA*\n`
+    text += `- Librería inyectada: ${isInstalled ? '✅ SÍ' : '❌ NO'}\n`
+    text += `- Motor de búsqueda: ${isInstalled ? '✅ ACTIVO' : '❌ INACTIVO'}\n\n`
+
+    text += `*👤 PRUEBA DE RESOLUCIÓN*\n`
+    text += `- Remitente: ${sender}\n`
+    text += `- Resultado: ${resuelto}\n`
+    text += `- Estado: ${statusResolucion}\n\n`
+    
+    text += `*📊 ESTADÍSTICAS*\n`
+    text += `- Identidades en memoria: ${cacheSize}\n`
+    text += `- Efectividad: ${hitRate}\n\n`
 
     text += `*⚡ RENDIMIENTO*\n`
-    text += `- Ping Bot: ${botPing}ms\n`
-    text += `- Ping Servidor: ${serverPing}ms\n`
-    text += `- Uptime: ${hours}h ${minutes}m`
+    text += `- Velocidad Bot: ${botPing}ms\n`
+    text += `- Velocidad Server: ${serverPing}ms`
 
     await conn.sendMessage(m.chat, { text }, { quoted: m })
 }

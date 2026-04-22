@@ -20,7 +20,7 @@ export const config = {
   comunidad: 'https://chat.whatsapp.com/KKwDZn5vDAE6MhZFAcVQeO',
   icono: 'https://raw.githubusercontent.com/Fer280809/Asta_bot/main/lib/catalogo.jpg',
   firma: '© Asta Bot - Todos los derechos reservados',
-  logo: 'https://raw.githubusercontent.com/Fer280809/Asta_bot/main/lib/catalogo.jpg',
+  logo: 'https://raw.githubusercontent.com/Fer2809fl/Asta_bot/refs/heads/main/assets/asta.jpg',
 
   modoPublico: true,
   antiPrivado: false,

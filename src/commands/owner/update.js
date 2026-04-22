@@ -6,7 +6,7 @@ import chalk from 'chalk'
 
 const execPromise = promisify(exec)
 
-const REPO_URL = global.github || 'https://github.com/Fer280809/asta-.git'
+const REPO_URL = global.github || 'https://github.com/Fer2809fl/asta-.git'
 
 async function ensureOrigin(repoUrl) {
     try {

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Asta Bot</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap"
+        rel="stylesheet">
+</head>
+
+<body class="dashboard">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <img id="sidebar-logo" src="" class="sidebar-logo">
+            <span>Asta Bot</span>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="#overview" class="nav-item active" onclick="showSection('overview')">
+                📊 Resumen
+            </a>
+            <a href="#config" class="nav-item" onclick="showSection('config')">
+                ⚙️ Configuración
+            </a>
+            <a href="#groups" class="nav-item" onclick="showSection('groups')">
+                👥 Grupos
+            </a>
+            <a href="#logos" class="nav-item" onclick="showSection('logos')">
+                🖼️ Logos
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <button onclick="logout()" class="btn-danger">🚪 Cerrar Sesión</button>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header class="dashboard-header">
+            <h1 id="welcome-text">Bienvenido</h1>
+            <div class="user-badge" id="user-role">USER</div>
+        </header>
+
+        <!-- Overview Section -->
+        <section id="section-overview" class="section active">
+            <div class="bot-status-card" id="bot-status">
+                <div class="status-indicator" id="status-dot">🔴</div>
+                <div class="status-info">
+                    <h3 id="bot-name">Sin Bot Vinculado</h3>
+                    <p id="bot-number">---</p>
+                    <span class="status-tag" id="status-tag">Desconectado</span>
+                </div>
+            </div>
+
+            <div class="stats-row">
+                <div class="stat-card">
+                    <span class="stat-icon">👥</span>
+                    <span class="stat-value" id="group-count">0</span>
+                    <span class="stat-label">Grupos</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-icon">⏱️</span>
+                    <span class="stat-value" id="uptime-val">0h</span>
+                    <span class="stat-label">Uptime</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-icon">🌐</span>
+                    <span class="stat-value" id="mode-val">Public</span>
+                    <span class="stat-label">Modo</span>
+                </div>
+            </div>
+
+            <div class="action-card" id="no-bot-msg" style="display:none;">
+                <h3>🤖 No tienes un Sub-Bot</h3>
+                <p>Solicita uno desde la página principal o usa #qr / #code en WhatsApp</p>
+                <a href="/" class="btn-glow">Solicitar Bot</a>
+            </div>
+        </section>
+
+        <!-- Config Section -->
+        <section id="section-config" class="section">
+            <h2 class="section-title">⚙️ Configuración del Bot</h2>
+            <form id="config-form" onsubmit="saveConfig(event)">
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>Nombre del Bot</label>
+                        <input type="text" id="cfg-name" maxlength="30">
+                    </div>
+                    <div class="input-group">
+                        <label>Modo</label>
+                        <select id="cfg-mode">
+                            <option value="public">🔓 Público</option>
+                            <option value="private">🔐 Privado</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Anti-Privado</label>
+                        <select id="cfg-antipriv">
+                            <option value="false">❌ Off</option>
+                            <option value="true">✅ On</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Anti-Spam</label>
+                        <select id="cfg-antispam">
+                            <option value="true">✅ On</option>
+                            <option value="false">❌ Off</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Cooldown (ms)</label>
+                        <input type="number" id="cfg-cooldown" min="1000" max="60000" step="500">
+                    </div>
+                </div>
+                <button type="submit" class="btn-glow">💾 Guardar Cambios</button>
+            </form>
+        </section>
+
+        <!-- Groups Section -->
+        <section id="section-groups" class="section">
+            <h2 class="section-title">👥 Grupos</h2>
+            <div class="groups-grid" id="groups-list">
+                <!-- Se llena dinámicamente -->
+            </div>
+        </section>
+
+        <!-- Logos Section -->
+        <section id="section-logos" class="section">
+            <h2 class="section-title">🖼️ Personalizar Logos</h2>
+            <div class="logos-grid">
+                <div class="logo-upload-card">
+                    <h4>Menú Principal</h4>
+                    <div class="logo-preview" id="preview-menu">
+                        <span>Sin imagen</span>
+                    </div>
+                    <input type="file" accept="image/*" onchange="uploadLogo('menu', this)">
+                </div>
+                <div class="logo-upload-card">
+                    <h4>Menú Gacha</h4>
+                    <div class="logo-preview" id="preview-gacha">
+                        <span>Sin imagen</span>
+                    </div>
+                    <input type="file" accept="image/*" onchange="uploadLogo('gacha', this)">
+                </div>
+                <div class="logo-upload-card">
+                    <h4>Menú Grupo</h4>
+                    <div class="logo-preview" id="preview-grupo">
+                        <span>Sin imagen</span>
+                    </div>
+                    <input type="file" accept="image/*" onchange="uploadLogo('grupo', this)">
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Group Detail Modal -->
+    <div id="group-modal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+            <h2 id="modal-group-name">Grupo</h2>
+            <div id="modal-group-info"></div>
+            <div class="modal-actions">
+                <button onclick="leaveGroup()" class="btn-danger">🚪 Salir del Grupo</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/dashboard.js"></script>
+</body>
+
+</html>

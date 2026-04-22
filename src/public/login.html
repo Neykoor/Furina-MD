@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Asta Bot</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap"
+        rel="stylesheet">
+</head>
+
+<body class="auth-page">
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <img id="logo-img" src="" alt="Asta" class="auth-logo">
+                <h2 id="auth-title">Iniciar Sesión</h2>
+                <p id="auth-subtitle">Accede a tu panel de control</p>
+            </div>
+
+            <!-- Tabs -->
+            <div class="auth-tabs">
+                <button class="auth-tab active" onclick="showForm('login')">Login</button>
+                <button class="auth-tab" onclick="showForm('register')">Registro</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="login-form" class="auth-form active" onsubmit="handleLogin(event)">
+                <div class="input-group">
+                    <label>Número / Usuario</label>
+                    <input type="text" id="login-user" placeholder="521234567890" required>
+                </div>
+                <div class="input-group">
+                    <label>Contraseña</label>
+                    <input type="password" id="login-pass" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn-glow btn-full">Entrar</button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="register-form" class="auth-form" onsubmit="handleRegister(event)">
+                <div class="input-group">
+                    <label>Token de Registro</label>
+                    <input type="text" id="reg-token" placeholder="Pide #token al bot" required>
+                    <small>Obtén uno con el comando <code>#token</code> en WhatsApp</small>
+                </div>
+                <div class="input-group">
+                    <label>Número / Usuario</label>
+                    <input type="text" id="reg-user" placeholder="521234567890" required>
+                </div>
+                <div class="input-group">
+                    <label>Contraseña</label>
+                    <input type="password" id="reg-pass" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn-glow btn-full">Crear Cuenta</button>
+            </form>
+
+            <div id="auth-error" class="auth-error"></div>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+</body>
+
+</html>

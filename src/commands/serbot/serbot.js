@@ -23,7 +23,9 @@ const {
     Browsers
 } = pkg
 
-// Constantes
+// ═══════════════════════════════════════════════════════════════════
+// CONSTANTES
+// ═══════════════════════════════════════════════════════════════════
 const SUBBOT_FOLDER = path.join(process.cwd(), 'session', 'Sub-bots')
 const MAX_SUBBOTS_PER_USER = 3
 const CONNECTION_TIMEOUT = 90000
@@ -59,8 +61,10 @@ const MSG_CODE = `╭─[ 💻 𝘼𝙎𝙏𝘼 𝘽𝙊𝙏 • 𝙈𝙊𝘿�
 │  ⏳  *Expira en 60 segundos.*
 ╰────────────────────────╯`
 
-// Patrones silenciosos
-const SILENT_PATTERNS = new Set([
+// ═══════════════════════════════════════════════════════════════════
+// SILENCIAR LOGS DE BAILEYS (SOLUCIÓN DEFINITIVA)
+// ═══════════════════════════════════════════════════════════════════
+const SILENT_PATTERNS = [
     'Bad MAC', 'Failed to decrypt', 'Session error', 'decryptWithSessions',
     'verifyMAC', 'SessionEntry', 'Closing session', 'Closing open session',
     'Closing stale open session', '_chains:', 'chainKey', 'chainType',
@@ -70,44 +74,50 @@ const SILENT_PATTERNS = new Set([
     'remoteIdentityKey:', 'pubKey:', 'privKey:', 'previousCounter:', 'closed:',
     'used:', 'created:', 'Socket closed', 'Timed out', 'rate limit', 'not-authorized',
     'Connection closed', 'ECONNRESET', 'socket hang up'
-])
+]
 
-// Inicialización de globales
+// Guardar originales
+const _origError = console.error
+const _origLog = console.log
+const _origWarn = console.warn
+
+// Función para verificar si un mensaje debe ser silenciado
+function shouldSilence(...args) {
+    const msg = args.join(' ')
+    return SILENT_PATTERNS.some(p => msg.includes(p))
+}
+
+// Sobrescribir console methods ANTES de crear cualquier socket
+console.error = function (...args) {
+    if (shouldSilence(...args)) return
+    _origError.apply(console, args)
+}
+
+console.log = function (...args) {
+    if (shouldSilence(...args)) return
+    _origLog.apply(console, args)
+}
+
+console.warn = function (...args) {
+    if (shouldSilence(...args)) return
+    _origWarn.apply(console, args)
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// GLOBALES
+// ═══════════════════════════════════════════════════════════════════
 if (!global.conns) global.conns = []
 if (!global.subBots) global.subBots = new Map()
 if (!global.subBotsData) global.subBotsData = new Map()
 if (!global.sentCodes) global.sentCodes = new Map()
 if (!global.subBotReconnectAttempts) global.subBotReconnectAttempts = new Map()
 
-// Sobrescribir console
-const originalConsole = {
-    error: console.error,
-    log: console.log,
-    warn: console.warn
-}
-
-console.error = (...args) => {
-    const msg = args.join(' ')
-    if ([...SILENT_PATTERNS].some(p => msg.includes(p))) return
-    originalConsole.error.apply(console, args)
-}
-
-console.log = (...args) => {
-    const msg = args.join(' ')
-    if ([...SILENT_PATTERNS].some(p => msg.includes(p))) return
-    originalConsole.log.apply(console, args)
-}
-
-console.warn = (...args) => {
-    const msg = args.join(' ')
-    if ([...SILENT_PATTERNS].some(p => msg.includes(p))) return
-    originalConsole.warn.apply(console, args)
-}
-
-// Utilidades
+// ═══════════════════════════════════════════════════════════════════
+// UTILIDADES
+// ═══════════════════════════════════════════════════════════════════
 const delay = ms => new Promise(r => setTimeout(r, ms))
 
-function cleanNum(jid) {
+export function cleanNum(jid) {
     if (!jid) return ''
     return String(jid).split('@')[0].split(':')[0].replace(/\D/g, '')
 }
@@ -120,21 +130,19 @@ function ensureDirectory(dirPath) {
 
 function safeDelete(filePath) {
     try {
-        if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath)
-        }
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath)
     } catch { }
 }
 
 function safeRmDir(dirPath) {
     try {
-        if (fs.existsSync(dirPath)) {
-            fs.rmSync(dirPath, { recursive: true, force: true })
-        }
+        if (fs.existsSync(dirPath)) fs.rmSync(dirPath, { recursive: true, force: true })
     } catch { }
 }
 
-// Configuración por defecto
+// ═══════════════════════════════════════════════════════════════════
+// CONFIGURACIÓN SUB-BOT
+// ═══════════════════════════════════════════════════════════════════
 function defaultSubConfig(userId, ownerSender = null) {
     return {
         name: global.botname || 'Asta Bot',
@@ -150,8 +158,7 @@ function defaultSubConfig(userId, ownerSender = null) {
     }
 }
 
-// Obtener configuración
-function getSubConfig(userId) {
+export function getSubConfig(userId) {
     const uid = cleanNum(userId) || userId
     const configPath = path.join(SUBBOT_FOLDER, uid, 'config.json')
 
@@ -171,8 +178,7 @@ function getSubConfig(userId) {
     return defaultSubConfig(uid)
 }
 
-// Guardar configuración
-function saveSubConfig(userId, newData = {}) {
+export function saveSubConfig(userId, newData = {}) {
     const uid = cleanNum(userId) || userId
     const sessionPath = path.join(SUBBOT_FOLDER, uid)
     const configPath = path.join(sessionPath, 'config.json')
@@ -199,19 +205,15 @@ function saveSubConfig(userId, newData = {}) {
     }
 }
 
-// Limpiar cache
-async function cleanSubBotCache(userId) {
+export async function cleanSubBotCache(userId) {
     const uid = cleanNum(userId) || userId
     const sessionPath = path.join(SUBBOT_FOLDER, uid)
 
     if (!fs.existsSync(sessionPath)) return
 
     const filesToDelete = [
-        'pre-key-store.json',
-        'sender-key-store.json',
-        'session-store.json',
-        'app-state-sync-key-store.json',
-        'store.json'
+        'pre-key-store.json', 'sender-key-store.json',
+        'session-store.json', 'app-state-sync-key-store.json', 'store.json'
     ]
 
     for (const file of filesToDelete) {
@@ -228,8 +230,10 @@ async function cleanSubBotCache(userId) {
     } catch { }
 }
 
-// Verificar conexión
-function isSubBotConnected(jid) {
+// ═══════════════════════════════════════════════════════════════════
+// VERIFICAR CONEXIÓN
+// ═══════════════════════════════════════════════════════════════════
+export function isSubBotConnected(jid) {
     if (!global.subBots?.size) return false
 
     const targetNum = cleanNum(jid)
@@ -242,14 +246,14 @@ function isSubBotConnected(jid) {
             if (sockNum === targetNum) {
                 return sock.ws?.readyState === 1 || sock.ws?.readyState === 'OPEN'
             }
-        } catch {
-            continue
-        }
+        } catch { continue }
     }
     return false
 }
 
-// Enviar código con botón
+// ═══════════════════════════════════════════════════════════════════
+// ENVIAR CÓDIGO CON BOTÓN
+// ═══════════════════════════════════════════════════════════════════
 async function sendCodeCopyButton(conn, jid, code, botName, quoted) {
     try {
         const interactiveMessage = {
@@ -300,22 +304,19 @@ async function sendCodeCopyButton(conn, jid, code, botName, quoted) {
     }
 }
 
-// Cargar comandos
+// ═══════════════════════════════════════════════════════════════════
+// CARGAR COMANDOS
+// ═══════════════════════════════════════════════════════════════════
 async function loadCommandsForSubBot() {
     const commands = new Map()
 
     try {
         const loaderPath = path.join(process.cwd(), 'lib', 'loader.js')
-        if (!fs.existsSync(loaderPath)) {
-            return commands
-        }
+        if (!fs.existsSync(loaderPath)) return commands
 
         const { loadCommands } = await import(pathToFileURL(loaderPath).href)
         const commandsPath = path.join(process.cwd(), 'src', 'commands')
-
-        if (!fs.existsSync(commandsPath)) {
-            return commands
-        }
+        if (!fs.existsSync(commandsPath)) return commands
 
         const archivos = loadCommands(commandsPath)
 
@@ -323,7 +324,6 @@ async function loadCommandsForSubBot() {
             try {
                 const mod = await import(pathToFileURL(filePath).href)
                 const plugin = mod.default || mod
-
                 if (!plugin?.command) continue
 
                 const cmds = [
@@ -332,18 +332,18 @@ async function loadCommandsForSubBot() {
                 ].filter(Boolean).map(c => c.toLowerCase())
 
                 for (const cmd of cmds) {
-                    if (!commands.has(cmd)) {
-                        commands.set(cmd, { plugin, filePath })
-                    }
+                    if (!commands.has(cmd)) commands.set(cmd, { plugin, filePath })
                 }
-            } catch (error) { }
+            } catch { }
         }
-    } catch (error) { }
+    } catch { }
 
     return commands
 }
 
-// Configurar handler
+// ═══════════════════════════════════════════════════════════════════
+// CONFIGURAR HANDLER
+// ═══════════════════════════════════════════════════════════════════
 async function setupSubBotHandler(sock, userId) {
     const uid = cleanNum(userId) || userId
 
@@ -389,7 +389,7 @@ async function setupSubBotHandler(sock, userId) {
             await handlerModule.handleMessage(sock, msg, commands)
         } catch (error) {
             const errMsg = error?.message || ''
-            if (![...SILENT_PATTERNS].some(p => errMsg.includes(p))) {
+            if (!SILENT_PATTERNS.some(p => errMsg.includes(p))) {
                 console.error(chalk.yellow(`⚠️ Error en sub-bot ${uid}:`), errMsg.substring(0, 100))
             }
         }
@@ -398,8 +398,10 @@ async function setupSubBotHandler(sock, userId) {
     console.log(chalk.green(`✅ Sub-bot ${uid} listo con ${commands.size} comandos`))
 }
 
-// Crear sub-bot
-async function createSubBot(options = {}) {
+// ═══════════════════════════════════════════════════════════════════
+// CREAR SUB-BOT
+// ═══════════════════════════════════════════════════════════════════
+export async function createSubBot(options = {}) {
     const {
         sessionPath,
         m = null,
@@ -417,6 +419,7 @@ async function createSubBot(options = {}) {
     }
 
     const ownerSender = m?.sender || null
+
     let { version } = await fetchLatestBaileysVersion().catch(() => ({ version: [2, 3000, 0] }))
 
     if (isSubBotConnected(uid)) {
@@ -509,9 +512,7 @@ async function createSubBot(options = {}) {
 
         try {
             sock.ev.removeAllListeners()
-            if (sock.ws?.readyState === 1) {
-                sock.ws.close()
-            }
+            if (sock.ws?.readyState === 1) sock.ws.close()
         } catch { }
 
         const index = global.conns.indexOf(sock)
@@ -550,9 +551,7 @@ async function createSubBot(options = {}) {
             const phoneNumber = uid.replace(/\D/g, '')
             const secret = await sock.requestPairingCode(phoneNumber)
 
-            if (!secret) {
-                throw new Error('No se pudo generar el código')
-            }
+            if (!secret) throw new Error('No se pudo generar el código')
 
             const formatted = secret.match(/.{1,4}/g)?.join('-') || secret
             const botName = global.botname || 'AstaBot'
@@ -624,9 +623,7 @@ async function createSubBot(options = {}) {
         const userNum = userJid.split('@')[0]
         const userName = sock.user?.name || 'SubBot'
 
-        if (!global.conns.includes(sock)) {
-            global.conns.push(sock)
-        }
+        if (!global.conns.includes(sock)) global.conns.push(sock)
 
         global.subBots.set(userJid, sock)
         global.subBots.set(uid, sock)
@@ -729,9 +726,7 @@ async function createSubBot(options = {}) {
     async function connectionUpdate(update) {
         const { connection, lastDisconnect, qr } = update
 
-        if (qr) {
-            currentQR = qr
-        }
+        if (qr) currentQR = qr
 
         if (qr && !sock.user && !codeSent) {
             codeSent = true
@@ -765,8 +760,10 @@ async function createSubBot(options = {}) {
     return sock
 }
 
-// Auto-iniciar sub-bots
-async function autoStartSubBots() {
+// ═══════════════════════════════════════════════════════════════════
+// AUTO-INICIAR SUB-BOTS
+// ═══════════════════════════════════════════════════════════════════
+export async function autoStartSubBots() {
     ensureDirectory(SUBBOT_FOLDER)
 
     let sessions = []
@@ -814,7 +811,9 @@ async function autoStartSubBots() {
     }
 }
 
-// Handler principal del comando serbot
+// ═══════════════════════════════════════════════════════════════════
+// HANDLER PRINCIPAL
+// ═══════════════════════════════════════════════════════════════════
 const handler = async (m, { conn, args, command }) => {
     const userId = cleanNum(m.sender)
     const mcode = command === 'code' || args.includes('code')
@@ -873,7 +872,9 @@ handler.help = ['qr', 'code']
 handler.tags = ['serbot']
 handler.command = ['qr', 'code', 'subbot']
 
-// ========== EXPORTACIONES ÚNICAS (CORREGIDO) ==========
+// ═══════════════════════════════════════════════════════════════════
+// EXPORTACIONES
+// ═══════════════════════════════════════════════════════════════════
 export {
     cleanNum,
     getSubConfig,
@@ -884,4 +885,4 @@ export {
     autoStartSubBots
 }
 
-export default handler;
+export default handler

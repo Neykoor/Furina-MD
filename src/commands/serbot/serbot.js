@@ -133,39 +133,74 @@ async function sendCodeCopyButton(conn, jid, code, botName, quoted) {
 }
 
 async function setupSubBotHandler(sock, userId, conn) {
-    let handlerModule = null
-    const possiblePaths = [
-        path.join(process.cwd(), 'lib', 'message-handler.js'),
-        path.join(process.cwd(), 'src', 'handler.js'),
-        '../../lib/message-handler.js',
-        '../../../../lib/message-handler.js'
-    ]
-
-    for (const handlerPath of possiblePaths) {
-        try {
-            const fileUrl = pathToFileURL(handlerPath).href
-            handlerModule = await import(fileUrl)
-            if (handlerModule?.handleMessage) break
-        } catch (e) { continue }
-    }
-
-    if (!handlerModule?.handleMessage) {
-        console.error(chalk.red(`❌ Handler no encontrado en sub-bot ${userId}`))
-        return
-    }
-
     sock.isSubBot = true
     sock.isMainBot = false
     sock.ownerId = userId
 
+    // CORRECCIÓN: Cargar handler y comandos igual que el bot principal
+    let handlerModule = null
+    const handlerPath = path.join(process.cwd(), 'lib', 'message-handler.js')
+    try {
+        handlerModule = await import(pathToFileURL(handlerPath).href)
+    } catch (e) {
+        console.error(chalk.red(`❌ Handler no encontrado para sub-bot ${userId}:`), e.message)
+        return
+    }
+
+    if (!handlerModule?.handleMessage) {
+        console.error(chalk.red(`❌ handleMessage no exportado correctamente para sub-bot ${userId}`))
+        return
+    }
+
+    // CORRECCIÓN: Cargar los comandos para que el sub-bot los pueda ejecutar
+    let commands = new Map()
+    try {
+        const { loadCommands } = await import(pathToFileURL(path.join(process.cwd(), 'lib', 'loader.js')).href)
+        const commandsDir = path.join(process.cwd(), 'src', 'commands')
+        const archivos = loadCommands(commandsDir)
+        for (const filePath of archivos) {
+            try {
+                const mod = await import(pathToFileURL(filePath).href)
+                const plugin = mod.default || mod
+                if (!plugin?.command) continue
+                const cmds = [
+                    ...(Array.isArray(plugin.command) ? plugin.command : [plugin.command]),
+                    ...(Array.isArray(plugin.aliases) ? plugin.aliases : [])
+                ].map(c => c.toLowerCase())
+                for (const cmd of cmds) {
+                    commands.set(cmd, { plugin, filePath })
+                }
+            } catch (_) {}
+        }
+    } catch (e) {
+        console.error(chalk.yellow(`⚠️ Error cargando comandos para sub-bot ${userId}:`), e.message)
+    }
+
+    const processedMessages = new NodeCache({ stdTTL: 30, checkperiod: 60 })
+
     sock.ev.on('messages.upsert', async (m) => {
         try {
             if (!m?.messages?.length) return
-            await handlerModule.handleMessage(sock, m)
+            const msg = m.messages[0]
+            if (!msg?.message) return
+
+            // Deduplicación de mensajes
+            const botId = sock.user?.jid || sock.user?.id || 'unknown'
+            const messageId = msg.key?.id
+            if (!messageId) return
+            const uniqueKey = `${botId}:${messageId}`
+            if (processedMessages.has(uniqueKey)) return
+            processedMessages.set(uniqueKey, true)
+
+            if (msg.key?.remoteJid === 'status@broadcast') return
+            if (msg.message?.protocolMessage) return
+            if (msg.message?.senderKeyDistributionMessage) return
+
+            await handlerModule.handleMessage(sock, msg, commands)
         } catch (err) {
-            const msg = err?.message || ''
-            if (!SILENT_ERRORS.some(p => msg.includes(p))) {
-                console.error(chalk.yellow(`⚠️ Error en sub-bot ${userId}:`), msg.substring(0, 100))
+            const errMsg = err?.message || ''
+            if (!SILENT_ERRORS.some(p => errMsg.includes(p))) {
+                console.error(chalk.yellow(`⚠️ Error en sub-bot ${userId}:`), errMsg.substring(0, 100))
             }
         }
     })
@@ -177,7 +212,7 @@ async function setupSubBotHandler(sock, userId, conn) {
         } catch (e) {}
     })
 
-    console.log(chalk.green(`✅ Handler configurado para sub-bot ${userId}`))
+    console.log(chalk.green(`✅ Handler + ${commands.size} comandos cargados para sub-bot ${userId}`))
 }
 
 export async function createSubBot(options) {
@@ -287,8 +322,11 @@ export async function createSubBot(options) {
             global.sentCodes.set(userId, { timestamp: Date.now(), type: mcode ? 'code' : 'qr' })
 
             if (mcode) {
+                // CORRECCIÓN: El número para requestPairingCode debe ser el número
+                // limpio con código de país, en formato E.164 (sin @s.whatsapp.net)
+                const numeroParaCodigo = String(userId).replace(/[^0-9]/g, '')
                 try {
-                    const secret = await sock.requestPairingCode(userId)
+                    const secret = await sock.requestPairingCode(numeroParaCodigo)
                     const formattedCode = secret?.match(/.{1,4}/g)?.join("-") || secret
                     const botName = global.namebot || 'AstaBot'
 
@@ -299,12 +337,15 @@ export async function createSubBot(options) {
 
                     const codeMsg = await sendCodeCopyButton(conn, m.chat, formattedCode, botName, m)
 
-                    qrTimer = setTimeout(() => {
-                        conn.sendMessage(m.chat, { delete: codeMsg.key }).catch(() => {})
-                    }, 55000)
+                    if (codeMsg?.key) {
+                        qrTimer = setTimeout(() => {
+                            conn.sendMessage(m.chat, { delete: codeMsg.key }).catch(() => {})
+                        }, 55000)
+                    }
 
                 } catch (e) {
-                    if (m) await conn.sendMessage(m.chat, { text: '❌ Error generando código.' }, { quoted: m })
+                    console.error(chalk.red('❌ Error requestPairingCode:'), e.message)
+                    if (m) await conn.sendMessage(m.chat, { text: `❌ Error generando código: ${e.message}` }, { quoted: m })
                     await cleanup(true)
                 }
             } else {
@@ -315,10 +356,13 @@ export async function createSubBot(options) {
                         caption: mensajeQR.trim()
                     }, { quoted: m })
 
-                    qrTimer = setTimeout(() => {
-                        conn.sendMessage(m.chat, { delete: qrMsg.key }).catch(() => {})
-                    }, 55000)
+                    if (qrMsg?.key) {
+                        qrTimer = setTimeout(() => {
+                            conn.sendMessage(m.chat, { delete: qrMsg.key }).catch(() => {})
+                        }, 55000)
+                    }
                 } catch (e) {
+                    console.error(chalk.red('❌ Error generando QR:'), e.message)
                     await cleanup(true)
                 }
             }

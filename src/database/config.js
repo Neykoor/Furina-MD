@@ -19,7 +19,7 @@ export const config = {
   github: 'https://github.com/Fer2809fl/asta-.git',
   grupo: 'https://chat.whatsapp.com/CErS5aOt9Ws61C9UpFPzdC',
   comunidad: 'https://chat.whatsapp.com/KKwDZn5vDAE6MhZFAcVQeO',
-  icono: 'https://raw.githubusercontent.com/Fer280809/Asta_bot/main/lib/catalogo.jpg',
+  icono: 'https://raw.githubusercontent.com/Fer280809/Asta_bot/main/lib/catalogo.jpg',//https://raw.githubusercontent.com/Fer2809fl/asta-/refs/heads/main/src/assets/logo-bot.png
   firma: '© Asta Bot - Todos los derechos reservados',
   logo: 'https://raw.githubusercontent.com/Fer2809fl/Asta_bot/refs/heads/main/assets/asta.jpg',
 

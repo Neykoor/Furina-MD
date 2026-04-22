@@ -1,13 +1,5 @@
 import path from 'path'
 
-const parseBoolean = (val) => {
-    if (!val) return null
-    const s = String(val).toLowerCase()
-    if (['on', 'true', '1', 'si', 'sí', 'yes', 'activar', 'enable'].includes(s)) return true
-    if (['off', 'false', '0', 'no', 'desactivar', 'disable'].includes(s)) return false
-    return null
-}
-
 let handler = async (m, { conn, args, command }) => {
     const from = m.chat
 
@@ -22,22 +14,28 @@ let handler = async (m, { conn, args, command }) => {
     }
 
     const senderNum = cleanNum(m.sender)
-    const ownerNum = cleanNum(conn.ownerId || subConfig.owner)
+    const ownerNum = cleanNum(subConfig.owner || conn.ownerId)
     const isGlobalOwner = (global.owner || []).some(o => {
-        return cleanNum(Array.isArray(o) ? o[0] : o) === senderNum
+        const oNum = cleanNum(Array.isArray(o) ? o[0] : o)
+        return oNum && oNum === senderNum
     })
 
     if (senderNum !== ownerNum && !isGlobalOwner) {
         return conn.sendMessage(from, {
-            text: `🔒 Solo el *owner* de este Sub-Bot puede usar este comando.`
-        }, { quoted: m })
+            text: `🔒 Solo el *owner* (@${ownerNum}) de este Sub-Bot puede usar este comando.`
+        }, { quoted: m, mentions: [`${ownerNum}@s.whatsapp.net`] })
     }
 
     switch (command) {
 
         case 'config': {
             if (!args[0]) {
-                const logoStatus = subConfig.logoUrl ? '🔗 URL' : '❌ Por defecto'
+                const logos = subConfig.logos || {}
+                const logoEntries = Object.entries(logos).filter(([_, v]) => v)
+                const logoList = logoEntries.length > 0
+                    ? logoEntries.map(([k, v]) => `   • *${k}* · ✅`).join('\n')
+                    : '   _(ninguno configurado)_'
+
                 return conn.sendMessage(from, {
                     text:
                         `╭━━━━━━━━━━━━━━━━━━╮
@@ -46,21 +44,25 @@ let handler = async (m, { conn, args, command }) => {
 
 📛 *Nombre* · ${subConfig.name || '_(por defecto)_'}
 🌐 *Modo* · ${subConfig.mode === 'private' ? '🔐 Privado' : '🔓 Público'}
-🚫 *Anti-privado* · ${subConfig.antiPrivate ? '✅ On' : '❌ Off'}
-🛡️ *Anti-spam* · ${subConfig.antiSpam ? '✅ On' : '❌ Off'}
-⏱️ *Cooldown* · ${subConfig.cooldown}ms
-🖼️ *Logo* · ${logoStatus}
+
+🖼️ *Logos configurados:*
+${logoList}
 
 *Comandos disponibles:*
  • *.config nombre* \`Texto\`
  • *.config modo* \`public/private\`
- • *.config logo* \`URL\` _(quitar: none)_
- • *.config cooldown* \`milisegundos\`
+ • *.config logo* \`zona\` \`URL\` _(quitar: none)_
  • *.config reset confirmar*
- • *.antiprivado* on/off
- • *.antispam* on/off
  • *.restartbot* — reiniciar
- • *.cleanbot* — limpiar caché y reiniciar`
+ • *.cleanbot* — limpiar caché y reiniciar
+
+*Zonas disponibles:*
+ • menu · menu principal
+ • gacha · menú gacha
+ • grupo · menú grupo
+ • antilinks · menú antilinks
+ • rpg · menú RPG
+ • games · menú juegos`
                 }, { quoted: m })
             }
 
@@ -97,30 +99,39 @@ let handler = async (m, { conn, args, command }) => {
 
                 case 'logo':
                 case 'icono': {
-                    if (!value || ['none', 'quitar', 'remove', 'default'].includes(value.toLowerCase())) {
-                        saveSubConfig(userId, { logoUrl: null })
-                        return conn.sendMessage(from, { text: '✅ Logo eliminado. Usando el por defecto.' }, { quoted: m })
-                    }
-                    if (!value.startsWith('http://') && !value.startsWith('https://')) {
-                        return conn.sendMessage(from, {
-                            text: `❌ Debes usar una URL válida (https://...)\nPara quitar: *.config logo none*`
-                        }, { quoted: m })
-                    }
-                    saveSubConfig(userId, { logoUrl: value })
-                    return conn.sendMessage(from, { text: `✅ Logo URL guardado: ${value}` }, { quoted: m })
-                }
+                    const zona = args[1]?.toLowerCase()
+                    const url = args.slice(2).join(' ').trim()
 
-                case 'cooldown':
-                case 'cd': {
-                    const ms = parseInt(value)
-                    if (isNaN(ms) || ms < 0 || ms > 60000) {
+                    const zonasValidas = ['menu', 'gacha', 'grupo', 'antilinks', 'rpg', 'games']
+
+                    if (!zona || !zonasValidas.includes(zona)) {
                         return conn.sendMessage(from, {
-                            text: `❌ Uso: *.config cooldown* 0-60000 (ms)\nEjemplo: *.config cooldown 3000*`
+                            text: `❌ Uso: *.config logo* \`zona\` \`URL\`\n\n*Zonas disponibles:*\n • menu\n • gacha\n • grupo\n • antilinks\n • rpg\n • games\n\n*Ejemplo:*\n*.config logo menu https://tu-imagen.jpg*`
                         }, { quoted: m })
                     }
-                    saveSubConfig(userId, { cooldown: ms })
+
+                    if (!url || ['none', 'quitar', 'remove', 'default', 'off'].includes(url.toLowerCase())) {
+                        const logosActuales = subConfig.logos || {}
+                        delete logosActuales[zona]
+                        saveSubConfig(userId, { logos: logosActuales })
+                        return conn.sendMessage(from, {
+                            text: `✅ Logo de *${zona}* eliminado.`
+                        }, { quoted: m })
+                    }
+
+                    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                        return conn.sendMessage(from, {
+                            text: `❌ Debes usar una URL válida (https://...)\nPara quitar: *.config logo ${zona} none*`
+                        }, { quoted: m })
+                    }
+
+                    const logos = { ...(subConfig.logos || {}) }
+                    logos[zona] = url
+
+                    saveSubConfig(userId, { logos })
+
                     return conn.sendMessage(from, {
-                        text: `✅ Cooldown actualizado: *${ms}ms*`
+                        text: `✅ Logo de *${zona}* guardado.\n\n🖼️ URL: ${url}\n🔄 Usa el menú correspondiente para ver el cambio.`
                     }, { quoted: m })
                 }
 
@@ -132,7 +143,7 @@ let handler = async (m, { conn, args, command }) => {
                     }
                     saveSubConfig(userId, {
                         name: null, mode: 'public',
-                        antiPrivate: false, antiSpam: true, cooldown: 3000, logoUrl: null
+                        logos: {}
                     })
                     return conn.sendMessage(from, {
                         text: `✅ Configuración reseteada a los valores por defecto.`
@@ -144,34 +155,6 @@ let handler = async (m, { conn, args, command }) => {
                         text: `❌ Opción *${action}* no reconocida.\nUsa *.config* para ver todas las opciones.`
                     }, { quoted: m })
             }
-        }
-
-        case 'antiprivado':
-        case 'antiprivate': {
-            const bool = parseBoolean(args[0])
-            if (bool === null) {
-                return conn.sendMessage(from, {
-                    text: `🚫 *Anti-Privado*\nEstado: ${subConfig.antiPrivate ? '✅ Activado' : '❌ Desactivado'}\n\nUso: *.antiprivado on/off*`
-                }, { quoted: m })
-            }
-            saveSubConfig(userId, { antiPrivate: bool })
-            return conn.sendMessage(from, {
-                text: `${bool ? '✅' : '❌'} Anti-Privado ${bool ? 'activado' : 'desactivado'}.\n${bool ? '🔒 Solo el owner puede escribirte en privado.' : '🔓 Cualquiera puede escribirte en privado.'}`
-            }, { quoted: m })
-        }
-
-        case 'antispam':
-        case 'antiflood': {
-            const bool = parseBoolean(args[0])
-            if (bool === null) {
-                return conn.sendMessage(from, {
-                    text: `🛡️ *Anti-Spam*\nEstado: ${subConfig.antiSpam ? '✅ Activado' : '❌ Desactivado'}\nCooldown: ${subConfig.cooldown}ms\n\nUso: *.antispam on/off*`
-                }, { quoted: m })
-            }
-            saveSubConfig(userId, { antiSpam: bool })
-            return conn.sendMessage(from, {
-                text: `${bool ? '✅' : '❌'} Anti-Spam ${bool ? 'activado' : 'desactivado'}.`
-            }, { quoted: m })
         }
 
         case 'restartbot':
@@ -246,12 +229,10 @@ let handler = async (m, { conn, args, command }) => {
     }
 }
 
-handler.help = ['config', 'restartbot', 'cleanbot', 'antiprivado', 'antispam']
+handler.help = ['config', 'restartbot', 'cleanbot']
 handler.tags = ['serbot']
 handler.command = [
     'config',
-    'antiprivado', 'antiprivate',
-    'antispam', 'antiflood',
     'restartbot', 'reiniciarbot',
     'cleanbot', 'limpiarbot'
 ]

@@ -67,13 +67,14 @@ const MSG_CODE = `╭─[ 💻 𝘼𝙎𝙏𝘼 𝘽𝙊𝙏 • 𝙈𝙊𝘿�
 const SILENT_PATTERNS = [
     'Bad MAC', 'Failed to decrypt', 'Session error', 'decryptWithSessions',
     'verifyMAC', 'SessionEntry', 'Closing session', 'Closing open session',
-    'Closing stale open session', '_chains:', 'chainKey', 'chainType',
-    'messageKeys', 'currentRatchet', 'ephemeralKeyPair', 'lastRemoteEphemeralKey',
-    'rootKey', 'indexInfo', 'baseKey', 'baseKeyType', 'pendingPreKey', 'registrationId',
-    'stream errored', 'connection closed', 'preKeyId:', 'signedKeyId:',
-    'remoteIdentityKey:', 'pubKey:', 'privKey:', 'previousCounter:', 'closed:',
-    'used:', 'created:', 'Socket closed', 'Timed out', 'rate limit', 'not-authorized',
-    'Connection closed', 'ECONNRESET', 'socket hang up'
+    'Removing old closed session', 'Closing stale open session', '_chains:', 'chainKey',
+    'chainType', 'messageKeys', 'currentRatchet', 'ephemeralKeyPair',
+    'lastRemoteEphemeralKey', 'rootKey', 'indexInfo', 'baseKey', 'baseKeyType',
+    'pendingPreKey', 'registrationId', 'stream errored', 'connection closed',
+    'preKeyId:', 'signedKeyId:', 'remoteIdentityKey:', 'pubKey:', 'privKey:',
+    'previousCounter:', 'closed:', 'used:', 'created:', 'Socket closed',
+    'Timed out', 'rate limit', 'not-authorized', 'Connection closed',
+    'ECONNRESET', 'socket hang up'
 ]
 
 // Guardar originales
@@ -83,8 +84,23 @@ const _origWarn = console.warn
 
 // Función para verificar si un mensaje debe ser silenciado
 function shouldSilence(...args) {
-    const msg = args.join(' ')
-    return SILENT_PATTERNS.some(p => msg.includes(p))
+    return args.some(arg => {
+        if (!arg) return false
+        if (typeof arg === 'string') {
+            return SILENT_PATTERNS.some(p => arg.includes(p))
+        }
+        if (typeof arg === 'object') {
+            try {
+                const keys = ['_chains', 'registrationId', 'currentRatchet', 'indexInfo', 'pendingPreKey']
+                if (keys.some(k => k in arg)) return true
+                const str = JSON.stringify(arg)
+                return SILENT_PATTERNS.some(p => str.includes(p))
+            } catch {
+                return false
+            }
+        }
+        return false
+    })
 }
 
 // Sobrescribir console methods ANTES de crear cualquier socket
@@ -151,6 +167,7 @@ function defaultSubConfig(userId, ownerSender = null) {
         antiSpam: true,
         cooldown: 3000,
         logoUrl: null,
+        logos: {},
         owner: ownerSender,
         userId,
         createdAt: new Date().toISOString(),
@@ -168,7 +185,8 @@ export function getSubConfig(userId) {
             return {
                 ...defaultSubConfig(uid, saved.owner),
                 ...saved,
-                name: global.botname || saved.name || 'Asta Bot'
+                name: global.botname || saved.name || 'Asta Bot',
+                logos: saved.logos || {}
             }
         }
     } catch (error) {
@@ -186,17 +204,42 @@ export function saveSubConfig(userId, newData = {}) {
     ensureDirectory(sessionPath)
 
     const current = getSubConfig(uid)
+
+    const mergedLogos = {
+        ...(current.logos || {}),
+        ...(newData.logos || {})
+    }
+
     const merged = {
         ...current,
         ...newData,
+        logos: newData.logos ? { ...mergedLogos } : (current.logos || {}),
         updatedAt: new Date().toISOString()
     }
 
     try {
         fs.writeFileSync(configPath, JSON.stringify(merged, null, 2))
 
-        const sock = global.subBots.get(uid) || global.subBots.get(merged.jid)
-        if (sock) sock.subConfig = merged
+        let sock = global.subBots.get(uid)
+
+        if (!sock) {
+            const botJid = `${uid}@s.whatsapp.net`
+            sock = global.subBots.get(botJid)
+        }
+
+        if (!sock) {
+            for (const [key, s] of global.subBots) {
+                if (cleanNum(s.user?.jid || s.user?.id || key) === uid) {
+                    sock = s
+                    break
+                }
+            }
+        }
+
+        if (sock) {
+            sock.subConfig = { ...merged }
+            console.log(chalk.green(`✅ Config actualizada en memoria para ${uid}`))
+        }
 
         return merged
     } catch (error) {
@@ -495,7 +538,7 @@ export async function createSubBot(options = {}) {
         sessionPath,
         isSubBot: true,
         isMainBot: false,
-        ownerId: cleanNum(ownerSender || uid),
+        ownerId: cleanNum(config.owner || ownerSender || uid),
         subConfig: config
     })
 
@@ -872,7 +915,4 @@ handler.help = ['qr', 'code']
 handler.tags = ['serbot']
 handler.command = ['qr', 'code', 'subbot']
 
-// ═══════════════════════════════════════════════════════════════════
-// EXPORTACIÓN ÚNICA (handler por defecto)
-// ═══════════════════════════════════════════════════════════════════
 export default handler

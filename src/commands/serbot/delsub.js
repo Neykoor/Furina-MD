@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 
-const SUBBOT_FOLDER = './data/sessions/subbots'
+const SUBBOT_FOLDER = './session/Sub-bots'
 
 function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms))

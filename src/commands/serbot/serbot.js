@@ -52,7 +52,7 @@ if (!global.subBotsData) global.subBotsData = new Map()
 if (!global.sentCodes) global.sentCodes = new Map()
 if (!global.subBotReconnectAttempts) global.subBotReconnectAttempts = new Map()
 
-const SUBBOT_FOLDER = './data/sessions/subbots'
+const SUBBOT_FOLDER = './session/Sub-bots'
 
 const SILENT_ERRORS = [
     'Bad MAC', 'Failed to decrypt', 'Session error', 'decryptWithSessions',

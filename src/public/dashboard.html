@@ -18,18 +18,12 @@
             <span>Asta Bot</span>
         </div>
         <nav class="sidebar-nav">
-            <a href="#overview" class="nav-item active" onclick="showSection('overview')">
-                📊 Resumen
-            </a>
-            <a href="#config" class="nav-item" onclick="showSection('config')">
-                ⚙️ Configuración
-            </a>
-            <a href="#groups" class="nav-item" onclick="showSection('groups')">
-                👥 Grupos
-            </a>
-            <a href="#logos" class="nav-item" onclick="showSection('logos')">
-                🖼️ Logos
-            </a>
+            <a href="#overview" class="nav-item active" onclick="showSection('overview')">📊 Resumen</a>
+            <a href="#config" class="nav-item" onclick="showSection('config')">⚙️ Configuración</a>
+            <a href="#groups" class="nav-item" onclick="showSection('groups')">👥 Grupos</a>
+            <a href="#welcome" class="nav-item" onclick="showSection('welcome')">👋 Welcome</a>
+            <a href="#profile" class="nav-item" onclick="showSection('profile')">👤 Perfil</a>
+            <a href="#logos" class="nav-item" onclick="showSection('logos')">🖼️ Logos</a>
         </nav>
         <div class="sidebar-footer">
             <button onclick="logout()" class="btn-danger">🚪 Cerrar Sesión</button>
@@ -42,7 +36,7 @@
             <div class="user-badge" id="user-role">USER</div>
         </header>
 
-        <!-- Overview Section -->
+        <!-- Overview -->
         <section id="section-overview" class="section active">
             <div class="bot-status-card" id="bot-status">
                 <div class="status-indicator" id="status-dot">🔴</div>
@@ -52,7 +46,6 @@
                     <span class="status-tag" id="status-tag">Desconectado</span>
                 </div>
             </div>
-
             <div class="stats-row">
                 <div class="stat-card">
                     <span class="stat-icon">👥</span>
@@ -70,7 +63,6 @@
                     <span class="stat-label">Modo</span>
                 </div>
             </div>
-
             <div class="action-card" id="no-bot-msg" style="display:none;">
                 <h3>🤖 No tienes un Sub-Bot</h3>
                 <p>Solicita uno desde la página principal o usa #qr / #code en WhatsApp</p>
@@ -78,7 +70,7 @@
             </div>
         </section>
 
-        <!-- Config Section -->
+        <!-- Config -->
         <section id="section-config" class="section">
             <h2 class="section-title">⚙️ Configuración del Bot</h2>
             <form id="config-form" onsubmit="saveConfig(event)">
@@ -117,44 +109,107 @@
             </form>
         </section>
 
-        <!-- Groups Section -->
+        <!-- Groups -->
         <section id="section-groups" class="section">
             <h2 class="section-title">👥 Grupos</h2>
-            <div class="groups-grid" id="groups-list">
-                <!-- Se llena dinámicamente -->
+            <div class="groups-grid" id="groups-list"></div>
+        </section>
+
+        <!-- Welcome -->
+        <section id="section-welcome" class="section">
+            <h2 class="section-title">👋 Configurar Welcome</h2>
+            <div class="welcome-group-selector">
+                <label>Seleccionar Grupo:</label>
+                <select id="welcome-group-select" onchange="loadWelcomeForGroup(this.value)">
+                    <option value="">-- Selecciona un grupo --</option>
+                </select>
+            </div>
+            <div id="welcome-editor" style="display:none;">
+                <div class="welcome-preview-small" id="welcome-preview-dashboard">
+                    <div class="welcome-canvas-small">
+                        <div class="welcome-avatar-small"></div>
+                        <div class="welcome-texts-small">
+                            <div class="welcome-title-small">¡Bienvenido!</div>
+                            <div class="welcome-name-small">+521234567890</div>
+                            <div class="welcome-group-small">a Mi Grupo</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>Título</label>
+                        <input type="text" id="dw-title">
+                    </div>
+                    <div class="input-group">
+                        <label>Color Título</label>
+                        <input type="color" id="dw-title-color">
+                    </div>
+                    <div class="input-group">
+                        <label>Mensaje Bienvenida</label>
+                        <textarea id="dw-caption" rows="3"></textarea>
+                    </div>
+                    <div class="input-group">
+                        <label>Mensaje Despedida</label>
+                        <textarea id="dw-caption-bye" rows="2"></textarea>
+                    </div>
+                </div>
+                <p style="color:var(--text-muted);font-size:0.85rem">
+                    Variables: {numero}, {grupo}, {miembros}, {nombre}
+                </p>
+                <button onclick="saveDashboardWelcome()" class="btn-glow">💾 Guardar Welcome</button>
             </div>
         </section>
 
-        <!-- Logos Section -->
+        <!-- Profile -->
+        <section id="section-profile" class="section">
+            <h2 class="section-title">👤 Mi Perfil</h2>
+            <div class="profile-card">
+                <div class="profile-avatar" id="profile-avatar">👤</div>
+                <div class="profile-info">
+                    <h3 id="profile-username">Usuario</h3>
+                    <p id="profile-phone">📱 ---</p>
+                    <p id="profile-role">🔰 ---</p>
+                    <p id="profile-money">💰 $0</p>
+                    <p id="profile-bio" style="color:var(--text-muted);font-style:italic;">Sin biografía</p>
+                </div>
+            </div>
+            <div class="form-grid">
+                <div class="input-group">
+                    <label>Biografía</label>
+                    <textarea id="edit-bio" rows="3" placeholder="Escribe algo sobre ti..."></textarea>
+                </div>
+                <div class="input-group">
+                    <label>URL de Avatar</label>
+                    <input type="url" id="edit-avatar" placeholder="https://...">
+                </div>
+            </div>
+            <button onclick="updateProfile()" class="btn-glow">💾 Actualizar Perfil</button>
+        </section>
+
+        <!-- Logos -->
         <section id="section-logos" class="section">
             <h2 class="section-title">🖼️ Personalizar Logos</h2>
             <div class="logos-grid">
                 <div class="logo-upload-card">
                     <h4>Menú Principal</h4>
-                    <div class="logo-preview" id="preview-menu">
-                        <span>Sin imagen</span>
-                    </div>
+                    <div class="logo-preview" id="preview-menu"><span>Sin imagen</span></div>
                     <input type="file" accept="image/*" onchange="uploadLogo('menu', this)">
                 </div>
                 <div class="logo-upload-card">
                     <h4>Menú Gacha</h4>
-                    <div class="logo-preview" id="preview-gacha">
-                        <span>Sin imagen</span>
-                    </div>
+                    <div class="logo-preview" id="preview-gacha"><span>Sin imagen</span></div>
                     <input type="file" accept="image/*" onchange="uploadLogo('gacha', this)">
                 </div>
                 <div class="logo-upload-card">
                     <h4>Menú Grupo</h4>
-                    <div class="logo-preview" id="preview-grupo">
-                        <span>Sin imagen</span>
-                    </div>
+                    <div class="logo-preview" id="preview-grupo"><span>Sin imagen</span></div>
                     <input type="file" accept="image/*" onchange="uploadLogo('grupo', this)">
                 </div>
             </div>
         </section>
     </main>
 
-    <!-- Group Detail Modal -->
+    <!-- Group Modal -->
     <div id="group-modal" class="modal">
         <div class="modal-content">
             <span class="modal-close" onclick="closeModal()">&times;</span>
@@ -162,6 +217,7 @@
             <div id="modal-group-info"></div>
             <div class="modal-actions">
                 <button onclick="leaveGroup()" class="btn-danger">🚪 Salir del Grupo</button>
+                <button onclick="editGroupWelcome()" class="btn-glow">👋 Configurar Welcome</button>
             </div>
         </div>
     </div>

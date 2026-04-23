@@ -10,7 +10,7 @@ export const config = {
 
   owner: [
     ['5214183357841', 'Fernando', true],
-    ['5356795360', 'Victor' true],
+    ['5356795360', 'Victor', true],
     ['5216631079388', 'Neykoor', true]
   ],
 

@@ -6,18 +6,20 @@ let handler = async (m, { conn, args, command }) => {
         return id === m.sender
     })
 
-    // Generar token
+    // ==========================================
+    // #token — Disponible para todos
+    // ==========================================
     if (command === 'token') {
-        const role = args[0] || 'user' // user, admin, owner
-        if (role === 'owner' && !isOwner) {
-            return conn.sendMessage(m.chat, {
-                text: '❌ Solo owners pueden generar tokens de owner.'
-            }, { quoted: m })
+        // Si es owner, puede elegir rol (user, admin, owner)
+        // Si NO es owner, forzamos rol 'user'
+        let role = args[0] || 'user'
+        
+        if (!isOwner) {
+            role = 'user' // Forzar user para no-owners
         }
 
         const token = crypto.randomBytes(32).toString('hex')
 
-        // Llamar a la API interna
         try {
             const res = await fetch('http://localhost:' + (process.env.PORT || 24683) + '/api/tokens/create', {
                 method: 'POST',
@@ -55,8 +57,16 @@ let handler = async (m, { conn, args, command }) => {
         }
     }
 
-    // Crear usuario directo (owner only)
-    if (command === 'createwebuser' && isOwner) {
+    // ==========================================
+    // #createwebuser — Solo owners
+    // ==========================================
+    if (command === 'createwebuser') {
+        if (!isOwner) {
+            return conn.sendMessage(m.chat, {
+                text: '❌ Este comando es exclusivo para owners.'
+            }, { quoted: m })
+        }
+
         const [username, password, role = 'user'] = args
         if (!username || !password) {
             return conn.sendMessage(m.chat, {
@@ -69,16 +79,25 @@ let handler = async (m, { conn, args, command }) => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': 'Bearer OWNER_SECRET' // O implementa auth interna
+                    'Authorization': 'Bearer OWNER_SECRET'
                 },
-                body: JSON.stringify({ username: username.replace(/\D/g, ''), password, role })
+                body: JSON.stringify({ 
+                    username: username.replace(/\D/g, ''), 
+                    password, 
+                    role 
+                })
             })
             const data = await res.json()
             await conn.sendMessage(m.chat, {
-                text: data.success ? `✅ Usuario *${username}* creado con rol *${role}*` : `❌ ${data.error}`
+                text: data.success 
+                    ? `✅ Usuario *${username}* creado con rol *${role}*` 
+                    : `❌ ${data.error}`
             }, { quoted: m })
         } catch (e) {
-            await conn.sendMessage(m.chat, { text: '❌ Error' }, { quoted: m })
+            console.error('Error creando usuario:', e)
+            await conn.sendMessage(m.chat, { 
+                text: '❌ Error al crear el usuario web.' 
+            }, { quoted: m })
         }
     }
 }
@@ -86,6 +105,5 @@ let handler = async (m, { conn, args, command }) => {
 handler.help = ['token', 'createwebuser']
 handler.tags = ['web', 'owner']
 handler.command = ['token', 'createwebuser']
-handler.owner = true // Solo owners pueden generar tokens
 
 export default handler

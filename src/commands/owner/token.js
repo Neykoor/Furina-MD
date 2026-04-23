@@ -6,17 +6,9 @@ let handler = async (m, { conn, args, command }) => {
         return id === m.sender
     })
 
-    // ==========================================
-    // #token — Disponible para todos
-    // ==========================================
     if (command === 'token') {
-        // Si es owner, puede elegir rol (user, admin, owner)
-        // Si NO es owner, forzamos rol 'user'
         let role = args[0] || 'user'
-        
-        if (!isOwner) {
-            role = 'user' // Forzar user para no-owners
-        }
+        if (!isOwner) role = 'user'
 
         const token = crypto.randomBytes(32).toString('hex')
 
@@ -37,6 +29,7 @@ let handler = async (m, { conn, args, command }) => {
                     text: `🔑 *Token de Registro Web*\n\n` +
                         `Token: \`${data.token}\`\n\n` +
                         `Rol: *${role.toUpperCase()}*\n` +
+                        `Vinculado a: ${m.sender.split('@')[0]}\n` +
                         `Expira: 24 horas\n\n` +
                         `Usa este token en: ${global.publicURL || 'la web'}\n\n` +
                         `⚠️ No compartas este token`,
@@ -56,54 +49,10 @@ let handler = async (m, { conn, args, command }) => {
             }, { quoted: m })
         }
     }
-
-    // ==========================================
-    // #createwebuser — Solo owners
-    // ==========================================
-    if (command === 'createwebuser') {
-        if (!isOwner) {
-            return conn.sendMessage(m.chat, {
-                text: '❌ Este comando es exclusivo para owners.'
-            }, { quoted: m })
-        }
-
-        const [username, password, role = 'user'] = args
-        if (!username || !password) {
-            return conn.sendMessage(m.chat, {
-                text: '❌ Uso: #createwebuser <numero> <password> [rol]'
-            }, { quoted: m })
-        }
-
-        try {
-            const res = await fetch('http://localhost:' + (process.env.PORT || 24683) + '/api/admin/create-user', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer OWNER_SECRET'
-                },
-                body: JSON.stringify({ 
-                    username: username.replace(/\D/g, ''), 
-                    password, 
-                    role 
-                })
-            })
-            const data = await res.json()
-            await conn.sendMessage(m.chat, {
-                text: data.success 
-                    ? `✅ Usuario *${username}* creado con rol *${role}*` 
-                    : `❌ ${data.error}`
-            }, { quoted: m })
-        } catch (e) {
-            console.error('Error creando usuario:', e)
-            await conn.sendMessage(m.chat, { 
-                text: '❌ Error al crear el usuario web.' 
-            }, { quoted: m })
-        }
-    }
 }
 
-handler.help = ['token', 'createwebuser']
-handler.tags = ['web', 'owner']
-handler.command = ['token', 'createwebuser']
+handler.help = ['token']
+handler.tags = ['web']
+handler.command = ['token']
 
 export default handler

@@ -26,7 +26,7 @@ async function loadInfo() {
             ownersList.innerHTML = data.owners.map(o => `
         <div class="owner-card">
           <div class="owner-avatar">👑</div>
-          <div class="owner-name">${o.name}</div>
+          <div class="owner-name">${escapeHtml(o.name)}</div>
           <div class="owner-number">+${o.number}</div>
         </div>
       `).join('')
@@ -126,7 +126,7 @@ async function requestCode() {
             result.innerHTML = `
         <div class="code-display">${data.code}</div>
         <p style="margin-top:1rem;color:var(--text-secondary)">${data.instructions}</p>
-        <button onclick="navigator.clipboard.writeText('${data.code.replace(/-/g, '')}')" class="btn-outline" style="margin-top:1rem">
+        <button onclick="navigator.clipboard.writeText('${data.rawCode}')" class="btn-outline" style="margin-top:1rem">
           📋 Copiar código
         </button>
       `
@@ -136,4 +136,10 @@ async function requestCode() {
     } catch (e) {
         result.innerHTML = `<p style="color:var(--danger)">❌ Error de conexión</p>`
     }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div')
+    div.textContent = text
+    return div.innerHTML
 }

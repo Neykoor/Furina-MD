@@ -6,13 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Asta Bot</title>
     <link rel="stylesheet" href="css/style.css">
-    <link
-        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
 
 <body class="dashboard">
-    <aside class="sidebar">
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <aside class="sidebar" id="sidebar">
         <div class="sidebar-brand">
             <img id="sidebar-logo" src="" class="sidebar-logo">
             <span>Asta Bot</span>
@@ -24,6 +24,9 @@
             <a href="#welcome" class="nav-item" onclick="showSection('welcome')">👋 Welcome</a>
             <a href="#profile" class="nav-item" onclick="showSection('profile')">👤 Perfil</a>
             <a href="#logos" class="nav-item" onclick="showSection('logos')">🖼️ Logos</a>
+            <a href="#bot-manage" class="nav-item" onclick="showSection('bot-manage')">🤖 Mi Bot</a>
+            <a href="#chat" class="nav-item" onclick="showSection('chat')">💬 Chat Asta</a>
+            <a href="#downloads" class="nav-item" onclick="showSection('downloads')">⬇️ Descargas</a>
         </nav>
         <div class="sidebar-footer">
             <button onclick="logout()" class="btn-danger">🚪 Cerrar Sesión</button>
@@ -32,9 +35,22 @@
 
     <main class="main-content">
         <header class="dashboard-header">
+            <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
             <h1 id="welcome-text">Bienvenido</h1>
             <div class="user-badge" id="user-role">USER</div>
         </header>
+
+        <!-- NO BOT MESSAGE -->
+        <div id="no-bot-banner" class="no-bot-banner" style="display:none;">
+            <div class="no-bot-content">
+                <span class="no-bot-icon">⚠️</span>
+                <div class="no-bot-text">
+                    <h3>No tienes un Sub-Bot vinculado</h3>
+                    <p>Para acceder a todas las funciones, vincula tu bot usando <code>#qr</code> o <code>#code</code> en WhatsApp</p>
+                </div>
+                <a href="/" class="btn-glow">🔗 Vincular Bot</a>
+            </div>
+        </div>
 
         <!-- Overview -->
         <section id="section-overview" class="section active">
@@ -44,6 +60,11 @@
                     <h3 id="bot-name">Sin Bot Vinculado</h3>
                     <p id="bot-number">---</p>
                     <span class="status-tag" id="status-tag">Desconectado</span>
+                </div>
+                <div class="bot-actions-quick" id="bot-actions-quick" style="display:none;">
+                    <button onclick="restartBot()" class="btn-outline btn-small" title="Reiniciar">🔄</button>
+                    <button onclick="clearBotCache()" class="btn-outline btn-small" title="Limpiar Caché">🧹</button>
+                    <button onclick="deleteBot()" class="btn-danger btn-small" title="Eliminar Bot">🗑️</button>
                 </div>
             </div>
             <div class="stats-row">
@@ -68,11 +89,34 @@
                 <p>Solicita uno desde la página principal o usa #qr / #code en WhatsApp</p>
                 <a href="/" class="btn-glow">Solicitar Bot</a>
             </div>
+
+            <!-- Quick Actions -->
+            <div class="quick-actions-grid" id="quick-actions" style="display:none;">
+                <div class="quick-action-card" onclick="showSection('welcome')">
+                    <span class="quick-icon">👋</span>
+                    <span>Configurar Welcome</span>
+                </div>
+                <div class="quick-action-card" onclick="showSection('logos')">
+                    <span class="quick-icon">🖼️</span>
+                    <span>Personalizar Logos</span>
+                </div>
+                <div class="quick-action-card" onclick="showSection('config')">
+                    <span class="quick-icon">⚙️</span>
+                    <span>Editar Config</span>
+                </div>
+                <div class="quick-action-card" onclick="showSection('chat')">
+                    <span class="quick-icon">💬</span>
+                    <span>Chat con Asta</span>
+                </div>
+            </div>
         </section>
 
         <!-- Config -->
         <section id="section-config" class="section">
             <h2 class="section-title">⚙️ Configuración del Bot</h2>
+            <div id="config-locked" class="locked-message" style="display:none;">
+                <p>🔒 Conecta tu bot primero para editar la configuración</p>
+            </div>
             <form id="config-form" onsubmit="saveConfig(event)">
                 <div class="form-grid">
                     <div class="input-group">
@@ -112,51 +156,71 @@
         <!-- Groups -->
         <section id="section-groups" class="section">
             <h2 class="section-title">👥 Grupos</h2>
+            <div id="groups-locked" class="locked-message" style="display:none;">
+                <p>🔒 Conecta tu bot primero para ver tus grupos</p>
+            </div>
             <div class="groups-grid" id="groups-list"></div>
         </section>
 
         <!-- Welcome -->
         <section id="section-welcome" class="section">
             <h2 class="section-title">👋 Configurar Welcome</h2>
-            <div class="welcome-group-selector">
-                <label>Seleccionar Grupo:</label>
-                <select id="welcome-group-select" onchange="loadWelcomeForGroup(this.value)">
-                    <option value="">-- Selecciona un grupo --</option>
-                </select>
+            <div id="welcome-locked" class="locked-message" style="display:none;">
+                <p>🔒 Conecta tu bot primero para configurar el welcome</p>
             </div>
-            <div id="welcome-editor" style="display:none;">
-                <div class="welcome-preview-small" id="welcome-preview-dashboard">
-                    <div class="welcome-canvas-small">
-                        <div class="welcome-avatar-small"></div>
-                        <div class="welcome-texts-small">
-                            <div class="welcome-title-small">¡Bienvenido!</div>
-                            <div class="welcome-name-small">+521234567890</div>
-                            <div class="welcome-group-small">a Mi Grupo</div>
+            <div id="welcome-content">
+                <div class="welcome-group-selector">
+                    <label>Seleccionar Grupo:</label>
+                    <select id="welcome-group-select" onchange="loadWelcomeForGroup(this.value)">
+                        <option value="">-- Selecciona un grupo --</option>
+                    </select>
+                </div>
+                <div id="welcome-editor" style="display:none;">
+                    <div class="welcome-preview-small" id="welcome-preview-dashboard">
+                        <div class="welcome-canvas-small" id="welcome-canvas-preview">
+                            <div class="welcome-avatar-small" id="preview-avatar"></div>
+                            <div class="welcome-texts-small">
+                                <div class="welcome-title-small" id="preview-title">¡Bienvenido!</div>
+                                <div class="welcome-name-small" id="preview-name">+521234567890</div>
+                                <div class="welcome-group-small" id="preview-group">a Mi Grupo</div>
+                            </div>
                         </div>
                     </div>
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Título</label>
+                            <input type="text" id="dw-title" oninput="updateWelcomePreview()">
+                        </div>
+                        <div class="input-group">
+                            <label>Color Título</label>
+                            <input type="color" id="dw-title-color" oninput="updateWelcomePreview()">
+                        </div>
+                        <div class="input-group">
+                            <label>Color Nombre</label>
+                            <input type="color" id="dw-name-color" oninput="updateWelcomePreview()">
+                        </div>
+                        <div class="input-group">
+                            <label>Color Grupo</label>
+                            <input type="color" id="dw-group-color" oninput="updateWelcomePreview()">
+                        </div>
+                        <div class="input-group">
+                            <label>Color Borde Avatar</label>
+                            <input type="color" id="dw-border-color" oninput="updateWelcomePreview()">
+                        </div>
+                        <div class="input-group full-width">
+                            <label>Mensaje Bienvenida</label>
+                            <textarea id="dw-caption" rows="3"></textarea>
+                        </div>
+                        <div class="input-group full-width">
+                            <label>Mensaje Despedida</label>
+                            <textarea id="dw-caption-bye" rows="2"></textarea>
+                        </div>
+                    </div>
+                    <p style="color:var(--text-muted);font-size:0.85rem">
+                        Variables: {numero}, {grupo}, {miembros}, {nombre}
+                    </p>
+                    <button onclick="saveDashboardWelcome()" class="btn-glow">💾 Guardar Welcome</button>
                 </div>
-                <div class="form-grid">
-                    <div class="input-group">
-                        <label>Título</label>
-                        <input type="text" id="dw-title">
-                    </div>
-                    <div class="input-group">
-                        <label>Color Título</label>
-                        <input type="color" id="dw-title-color">
-                    </div>
-                    <div class="input-group">
-                        <label>Mensaje Bienvenida</label>
-                        <textarea id="dw-caption" rows="3"></textarea>
-                    </div>
-                    <div class="input-group">
-                        <label>Mensaje Despedida</label>
-                        <textarea id="dw-caption-bye" rows="2"></textarea>
-                    </div>
-                </div>
-                <p style="color:var(--text-muted);font-size:0.85rem">
-                    Variables: {numero}, {grupo}, {miembros}, {nombre}
-                </p>
-                <button onclick="saveDashboardWelcome()" class="btn-glow">💾 Guardar Welcome</button>
             </div>
         </section>
 
@@ -170,6 +234,7 @@
                     <p id="profile-phone">📱 ---</p>
                     <p id="profile-role">🔰 ---</p>
                     <p id="profile-money">💰 $0</p>
+                    <p id="profile-email" style="color:var(--text-muted);">📧 Sin correo</p>
                     <p id="profile-bio" style="color:var(--text-muted);font-style:italic;">Sin biografía</p>
                 </div>
             </div>
@@ -182,6 +247,10 @@
                     <label>URL de Avatar</label>
                     <input type="url" id="edit-avatar" placeholder="https://...">
                 </div>
+                <div class="input-group">
+                    <label>Correo Electrónico</label>
+                    <input type="email" id="edit-email" placeholder="correo@ejemplo.com">
+                </div>
             </div>
             <button onclick="updateProfile()" class="btn-glow">💾 Actualizar Perfil</button>
         </section>
@@ -189,22 +258,170 @@
         <!-- Logos -->
         <section id="section-logos" class="section">
             <h2 class="section-title">🖼️ Personalizar Logos</h2>
-            <div class="logos-grid">
-                <div class="logo-upload-card">
-                    <h4>Menú Principal</h4>
-                    <div class="logo-preview" id="preview-menu"><span>Sin imagen</span></div>
-                    <input type="file" accept="image/*" onchange="uploadLogo('menu', this)">
+            <div id="logos-locked" class="locked-message" style="display:none;">
+                <p>🔒 Conecta tu bot primero para personalizar logos</p>
+            </div>
+            <div id="logos-content">
+                <div class="logos-grid">
+                    <div class="logo-upload-card">
+                        <h4>Menú Principal</h4>
+                        <div class="logo-preview" id="preview-menu"><span>Sin imagen</span></div>
+                        <div class="logo-actions">
+                            <input type="file" accept="image/*" onchange="uploadLogo('menu', this)" id="file-menu">
+                            <button onclick="useDefaultLogo('menu')" class="btn-outline btn-small">🔄 Usar Default</button>
+                            <button onclick="deleteLogo('menu')" class="btn-danger btn-small">🗑️ Eliminar</button>
+                        </div>
+                    </div>
+                    <div class="logo-upload-card">
+                        <h4>Menú Gacha</h4>
+                        <div class="logo-preview" id="preview-gacha"><span>Sin imagen</span></div>
+                        <div class="logo-actions">
+                            <input type="file" accept="image/*" onchange="uploadLogo('gacha', this)" id="file-gacha">
+                            <button onclick="useDefaultLogo('gacha')" class="btn-outline btn-small">🔄 Usar Default</button>
+                            <button onclick="deleteLogo('gacha')" class="btn-danger btn-small">🗑️ Eliminar</button>
+                        </div>
+                    </div>
+                    <div class="logo-upload-card">
+                        <h4>Menú Grupo</h4>
+                        <div class="logo-preview" id="preview-grupo"><span>Sin imagen</span></div>
+                        <div class="logo-actions">
+                            <input type="file" accept="image/*" onchange="uploadLogo('grupo', this)" id="file-grupo">
+                            <button onclick="useDefaultLogo('grupo')" class="btn-outline btn-small">🔄 Usar Default</button>
+                            <button onclick="deleteLogo('grupo')" class="btn-danger btn-small">🗑️ Eliminar</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="logo-upload-card">
-                    <h4>Menú Gacha</h4>
-                    <div class="logo-preview" id="preview-gacha"><span>Sin imagen</span></div>
-                    <input type="file" accept="image/*" onchange="uploadLogo('gacha', this)">
+                <div class="default-logos-section">
+                    <h3>🎨 Logos Predeterminados</h3>
+                    <div class="default-logos-grid" id="default-logos-grid"></div>
                 </div>
-                <div class="logo-upload-card">
-                    <h4>Menú Grupo</h4>
-                    <div class="logo-preview" id="preview-grupo"><span>Sin imagen</span></div>
-                    <input type="file" accept="image/*" onchange="uploadLogo('grupo', this)">
+            </div>
+        </section>
+
+        <!-- Bot Management -->
+        <section id="section-bot-manage" class="section">
+            <h2 class="section-title">🤖 Gestión de Mi Bot</h2>
+            <div id="bot-manage-locked" class="locked-message" style="display:none;">
+                <p>🔒 No tienes un bot vinculado</p>
+                <a href="/" class="btn-glow">🔗 Vincular Bot Ahora</a>
+            </div>
+            <div id="bot-manage-content">
+                <div class="bot-manage-card">
+                    <div class="bot-manage-status">
+                        <div class="status-big" id="manage-status-dot">🔴</div>
+                        <div class="bot-manage-info">
+                            <h3 id="manage-bot-name">Sin Bot</h3>
+                            <p id="manage-bot-number">---</p>
+                            <span class="status-tag" id="manage-status-text">Desconectado</span>
+                        </div>
+                    </div>
+                    <div class="bot-manage-actions">
+                        <button onclick="restartBot()" class="btn-glow">
+                            🔄 Reiniciar Bot
+                            <small>Reconecta tu bot</small>
+                        </button>
+                        <button onclick="clearBotCache()" class="btn-outline">
+                            🧹 Limpiar Caché
+                            <small>Elimina archivos temporales</small>
+                        </button>
+                        <button onclick="deleteBot()" class="btn-danger">
+                            🗑️ Eliminar Bot
+                            <small>Elimina tu bot permanentemente</small>
+                        </button>
+                    </div>
                 </div>
+                <div class="bot-stats-detailed">
+                    <h3>📊 Estadísticas</h3>
+                    <div class="stats-row">
+                        <div class="stat-card">
+                            <span class="stat-icon">📅</span>
+                            <span class="stat-value" id="bot-created">---</span>
+                            <span class="stat-label">Creado</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-icon">🔄</span>
+                            <span class="stat-value" id="bot-restarts">0</span>
+                            <span class="stat-label">Reinicios</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-icon">💾</span>
+                            <span class="stat-value" id="bot-cache">OK</span>
+                            <span class="stat-label">Caché</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Chat Asta -->
+        <section id="section-chat" class="section">
+            <h2 class="section-title">💬 Chat con Asta</h2>
+            <div class="chat-asta-container">
+                <div class="chat-asta-messages" id="chat-messages">
+                    <div class="chat-message bot-message">
+                        <div class="message-avatar">🤖</div>
+                        <div class="message-content">
+                            <p>¡Hola! Soy Asta Bot 🤖</p>
+                            <p>Puedo ayudarte con:</p>
+                            <ul>
+                                <li>📋 Información de comandos</li>
+                                <li>🔧 Configuración de tu bot</li>
+                                <li>❓ Resolver dudas</li>
+                                <li>🎮 Info de juegos</li>
+                            </ul>
+                            <span class="message-time">Ahora</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-asta-input">
+                    <input type="text" id="chat-input" placeholder="Escribe un mensaje..." 
+                           onkeypress="if(event.key==='Enter') sendChatMessage()">
+                    <button onclick="sendChatMessage()" class="btn-glow">📤</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Downloads -->
+        <section id="section-downloads" class="section">
+            <h2 class="section-title">⬇️ Descargas</h2>
+            <div class="download-card">
+                <div class="input-group">
+                    <label>URL del Video</label>
+                    <input type="url" id="download-url" placeholder="https://youtube.com/... o https://instagram.com/...">
+                </div>
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>Plataforma</label>
+                        <select id="download-platform">
+                            <option value="auto">🔍 Auto-detectar</option>
+                            <option value="youtube">📺 YouTube</option>
+                            <option value="instagram">📸 Instagram</option>
+                            <option value="facebook">📘 Facebook</option>
+                            <option value="tiktok">🎵 TikTok</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Formato</label>
+                        <select id="download-format">
+                            <option value="video">🎬 Video</option>
+                            <option value="audio">🎵 Audio MP3</option>
+                            <option value="document">📄 Documento</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Calidad</label>
+                        <select id="download-quality">
+                            <option value="best">⭐ Mejor</option>
+                            <option value="720">📺 HD 720p</option>
+                            <option value="480">📺 SD 480p</option>
+                            <option value="360">📺 360p</option>
+                        </select>
+                    </div>
+                </div>
+                <button onclick="downloadMedia()" class="btn-glow" id="btn-download">
+                    ⬇️ Descargar
+                </button>
+                <div id="download-result" class="download-result"></div>
             </div>
         </section>
     </main>

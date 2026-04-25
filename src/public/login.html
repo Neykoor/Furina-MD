@@ -6,9 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Asta Bot</title>
     <link rel="stylesheet" href="css/style.css">
-    <link
-        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
 
 <body class="auth-page">
@@ -20,30 +18,52 @@
                 <p id="auth-subtitle">Accede a tu panel de control</p>
             </div>
 
-            <!-- Tabs -->
-            <div class="auth-tabs">
-                <button class="auth-tab active" onclick="showForm('login')">Login</button>
-                <button class="auth-tab" onclick="showForm('register')">Registro</button>
+            <!-- Auth Method Toggle -->
+            <div class="auth-method-toggle">
+                <button class="method-btn active" onclick="switchAuthMethod('credentials')" id="btn-credentials">
+                    🔐 Usuario y Contraseña
+                </button>
+                <button class="method-btn" onclick="switchAuthMethod('token')" id="btn-token">
+                    🎫 Token ASTA
+                </button>
             </div>
 
-            <!-- Login Form -->
+            <!-- Login with Credentials -->
             <form id="login-form" class="auth-form active" onsubmit="handleLogin(event)">
                 <div class="input-group">
-                    <label>Número / Usuario</label>
-                    <input type="text" id="login-user" placeholder="521234567890" required>
+                    <label>Número / Usuario / Correo</label>
+                    <input type="text" id="login-user" placeholder="521234567890 o correo@ejemplo.com" required>
                 </div>
                 <div class="input-group">
                     <label>Contraseña</label>
                     <input type="password" id="login-pass" placeholder="••••••••" required>
                 </div>
                 <button type="submit" class="btn-glow btn-full">Entrar</button>
+                <p class="auth-switch">
+                    ¿No tienes cuenta? <a href="#" onclick="showForm('register')">Regístrate con Token</a>
+                </p>
+            </form>
+
+            <!-- Login with Token -->
+            <form id="token-form" class="auth-form" onsubmit="handleTokenLogin(event)">
+                <div class="input-group">
+                    <label>Token de Acceso</label>
+                    <input type="text" id="token-input" placeholder="ASTA-XXXXX" required 
+                           style="text-transform: uppercase; letter-spacing: 2px; font-family: monospace;">
+                    <small>Ingresa tu token ASTA de 5 dígitos</small>
+                </div>
+                <button type="submit" class="btn-glow btn-full">Verificar Token</button>
+                <p class="auth-switch">
+                    ¿No tienes token? Pide uno con <code>#token</code> en WhatsApp
+                </p>
             </form>
 
             <!-- Register Form -->
             <form id="register-form" class="auth-form" onsubmit="handleRegister(event)">
                 <div class="input-group">
                     <label>Token de Registro</label>
-                    <input type="text" id="reg-token" placeholder="Pide #token al bot" required>
+                    <input type="text" id="reg-token" placeholder="ASTA-XXXXX" required
+                           style="text-transform: uppercase; letter-spacing: 2px; font-family: monospace;">
                     <small>Obtén uno con el comando <code>#token</code> en WhatsApp</small>
                 </div>
                 <div class="input-group">
@@ -51,13 +71,36 @@
                     <input type="text" id="reg-user" placeholder="521234567890" required>
                 </div>
                 <div class="input-group">
+                    <label>Correo Electrónico (Opcional)</label>
+                    <input type="email" id="reg-email" placeholder="correo@ejemplo.com">
+                    <button type="button" class="btn-outline btn-small" onclick="sendEmailCode()" id="btn-send-code">
+                        📧 Enviar Código de Verificación
+                    </button>
+                </div>
+                <div class="input-group" id="email-code-group" style="display:none;">
+                    <label>Código de Verificación</label>
+                    <input type="text" id="reg-email-code" placeholder="123456" maxlength="6">
+                    <button type="button" class="btn-outline btn-small" onclick="verifyEmailCode()">
+                        ✅ Verificar
+                    </button>
+                </div>
+                <div class="input-group">
                     <label>Contraseña</label>
-                    <input type="password" id="reg-pass" placeholder="••••••••" required>
+                    <input type="password" id="reg-pass" placeholder="••••••••" required minlength="6">
+                    <small>Mínimo 6 caracteres</small>
+                </div>
+                <div class="input-group">
+                    <label>Confirmar Contraseña</label>
+                    <input type="password" id="reg-pass-confirm" placeholder="••••••••" required>
                 </div>
                 <button type="submit" class="btn-glow btn-full">Crear Cuenta</button>
+                <p class="auth-switch">
+                    ¿Ya tienes cuenta? <a href="#" onclick="showForm('login')">Inicia Sesión</a>
+                </p>
             </form>
 
             <div id="auth-error" class="auth-error"></div>
+            <div id="auth-success" class="auth-success"></div>
         </div>
     </div>
 

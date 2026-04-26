@@ -7,10 +7,9 @@ let handler = async (m, { conn, args, command }) => {
 
         if (!username || !numero || !password) {
             return conn.sendMessage(m.chat, {
-                text: '❌ Uso: *#crearuser <user> <numero> <contraseña> [rol]*
+                text: `❌ Uso: *#crearuser <user> <numero> <contraseña> [rol]*
 
-' +
-                    'Ejemplo: #crearuser fernando 521234567890 miPass123 user'
+Ejemplo: #crearuser fernando 521234567890 miPass123 user`
             }, { quoted: m })
         }
 
@@ -18,7 +17,6 @@ let handler = async (m, { conn, args, command }) => {
         const port = process.env.PORT || 24683
         const webUrl = global.publicURL || `http://localhost:${port}`
 
-        // Obtener token de owner para autenticación
         const ownerToken = global.webAdminToken || generateOwnerToken()
 
         try {
@@ -45,17 +43,12 @@ let handler = async (m, { conn, args, command }) => {
                 text: data.success
                     ? `✅ *Usuario Web Creado*
 
-` +
-                    `👤 Usuario: *${username}*
-` +
-                    `📱 Número: *${cleanNum}*
-` +
-                    `🔐 Rol: *${role}*
-` +
-                    `🔑 Contraseña: ||${password}||
+👤 Usuario: *${username}*
+📱 Número: *${cleanNum}*
+🔐 Rol: *${role}*
+🔑 Contraseña: ||${password}||
 
-` +
-                    `🌐 Accede en: ${webUrl}/login`
+🌐 Accede en: ${webUrl}/login`
                     : `❌ ${data.error || 'Error al crear usuario'}`,
                 contextInfo: {
                     externalAdReply: {
@@ -75,15 +68,11 @@ let handler = async (m, { conn, args, command }) => {
                 text: `❌ Error al crear usuario web.
 
 Verifica que:
-` +
-                    `• La web esté activa (puerto ${port})
-` +
-                    `• El servidor no tenga errores
-` +
-                    `• Tengas permisos de owner
+• La web esté activa (puerto ${port})
+• El servidor no tenga errores
+• Tengas permisos de owner
 
-` +
-                    `Error: ${e.message}`,
+Error: ${e.message}`,
                 contextInfo: {
                     externalAdReply: {
                         title: '❌ Error Web',

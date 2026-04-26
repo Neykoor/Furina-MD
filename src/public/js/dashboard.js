@@ -101,10 +101,7 @@ async function loadDashboard() {
         fillConfigForm(dashRes.bot.config)
         fillWelcomeGroupSelect(dashRes.bot.groups)
         fillAntilinkGroupSelect(dashRes.bot.groups)
-
-    } catch (e) {
-        console.error('loadDashboard:', e)
-    }
+    } catch (e) { console.error('loadDashboard:', e) }
 }
 
 function renderBotStatus(bot) {
@@ -130,7 +127,7 @@ async function restartUserBot() {
 }
 
 function confirmDeleteSession() {
-    confirm2('¿Eliminar sesión?', 'Tendrás que escanear el QR de nuevo en /vincular.', async () => {
+    confirm2('¿Eliminar sesión?', 'Tendrás que escanear el QR de nuevo.', async () => {
         const d = await api('/api/dashboard/session', 'DELETE')
         toast(d.success ? '✅ Sesión eliminada' : '❌ ' + d.error, d.success ? 'success' : 'error')
     })
@@ -221,25 +218,18 @@ async function loadWelcomeForGroup(jid) {
     const d = await api(`/api/dashboard/welcome/${encodeURIComponent(jid)}`)
     if (!d.success) return
     const c = d.config
-    setV('wlc-title', c.titleText)
-    setV('wlc-title-color', c.titleColor)
-    setV('wlc-name-color', c.nameColor)
-    setV('wlc-group-color', c.groupColor)
-    setV('wlc-border-color', c.borderColor)
-    setV('wlc-border-width', c.borderWidth)
+    setV('wlc-title', c.titleText); setV('wlc-title-color', c.titleColor)
+    setV('wlc-name-color', c.nameColor); setV('wlc-group-color', c.groupColor)
+    setV('wlc-border-color', c.borderColor); setV('wlc-border-width', c.borderWidth)
     setV('wlc-border-style', c.borderStyle)
     setV('wlc-avatar-x', c.avatarX); document.getElementById('wlc-ax-val').textContent = c.avatarX
     setV('wlc-avatar-y', c.avatarY); document.getElementById('wlc-ay-val').textContent = c.avatarY
     setV('wlc-avatar-r', c.avatarRadius); document.getElementById('wlc-ar-val').textContent = c.avatarRadius
     setV('wlc-avatar-shape', c.avatarShape)
-    setV('wlc-bg1', c.bgGradient1)
-    setV('wlc-bg2', c.bgGradient2)
-    setV('wlc-overlay', c.overlayOpacity)
-    setV('wlc-title-size', c.titleSize)
-    setV('wlc-name-size', c.nameSize)
-    setV('wlc-group-size', c.groupSize)
-    setV('wlc-caption', c.caption)
-    setV('wlc-caption-bye', c.captionBye)
+    setV('wlc-bg1', c.bgGradient1); setV('wlc-bg2', c.bgGradient2)
+    setV('wlc-overlay', c.overlayOpacity); setV('wlc-title-size', c.titleSize)
+    setV('wlc-name-size', c.nameSize); setV('wlc-group-size', c.groupSize)
+    setV('wlc-caption', c.caption); setV('wlc-caption-bye', c.captionBye)
     setV('wlc-bg-url', c.backgroundImage || '')
     document.getElementById('wlc-text-shadow').checked = c.textShadow !== false
     currentGroupJid = jid
@@ -250,28 +240,20 @@ async function loadWelcomeForGroup(jid) {
 async function saveWelcome() {
     if (!currentGroupJid) { toast('⚠️ Selecciona un grupo', 'error'); return }
     const body = {
-        titleText: gV('wlc-title'),
-        titleColor: gV('wlc-title-color'),
-        nameColor: gV('wlc-name-color'),
-        groupColor: gV('wlc-group-color'),
-        membersColor: '#AAAAAA',
-        borderColor: gV('wlc-border-color'),
+        titleText: gV('wlc-title'), titleColor: gV('wlc-title-color'),
+        nameColor: gV('wlc-name-color'), groupColor: gV('wlc-group-color'),
+        membersColor: '#AAAAAA', borderColor: gV('wlc-border-color'),
         borderWidth: parseInt(gV('wlc-border-width')) || 4,
         borderStyle: gV('wlc-border-style'),
-        avatarX: parseInt(gV('wlc-avatar-x')),
-        avatarY: parseInt(gV('wlc-avatar-y')),
-        avatarRadius: parseInt(gV('wlc-avatar-r')),
-        avatarShape: gV('wlc-avatar-shape'),
-        bgGradient1: gV('wlc-bg1'),
-        bgGradient2: gV('wlc-bg2'),
-        backgroundImage: gV('wlc-bg-url'),
-        overlayOpacity: parseFloat(gV('wlc-overlay')),
+        avatarX: parseInt(gV('wlc-avatar-x')), avatarY: parseInt(gV('wlc-avatar-y')),
+        avatarRadius: parseInt(gV('wlc-avatar-r')), avatarShape: gV('wlc-avatar-shape'),
+        bgGradient1: gV('wlc-bg1'), bgGradient2: gV('wlc-bg2'),
+        backgroundImage: gV('wlc-bg-url'), overlayOpacity: parseFloat(gV('wlc-overlay')),
         textShadow: document.getElementById('wlc-text-shadow')?.checked !== false,
         titleSize: parseInt(gV('wlc-title-size')) || 28,
         nameSize: parseInt(gV('wlc-name-size')) || 20,
         groupSize: parseInt(gV('wlc-group-size')) || 16,
-        caption: gV('wlc-caption'),
-        captionBye: gV('wlc-caption-bye')
+        caption: gV('wlc-caption'), captionBye: gV('wlc-caption-bye')
     }
     const d = await api(`/api/dashboard/welcome/${encodeURIComponent(currentGroupJid)}`, 'POST', body)
     toast(d.success ? '✅ Welcome guardado' : '❌ ' + d.error, d.success ? 'success' : 'error')
@@ -282,10 +264,8 @@ async function loadAntilinkConfig(jid) {
     const d = await api(`/api/dashboard/antilink/${encodeURIComponent(jid)}`)
     if (!d.success) { document.getElementById('antilink-editor').style.display = 'block'; return }
     const c = d.config
-    setV('al-enabled', String(c.enabled || false))
-    setV('al-mode', c.mode || 'all')
-    setV('al-action', c.action || 'delete')
-    setV('al-warn-count', c.warnCount || 3)
+    setV('al-enabled', String(c.enabled || false)); setV('al-mode', c.mode || 'all')
+    setV('al-action', c.action || 'delete'); setV('al-warn-count', c.warnCount || 3)
     setV('al-exempt-admins', String(c.exemptAdmins !== false))
     setV('al-allowed', (c.allowedLinks || []).join(', '))
     setV('al-blocked', (c.blockedLinks || []).join(', '))
@@ -297,10 +277,8 @@ async function saveAntilinkConfig(e) {
     e.preventDefault()
     if (!currentGroupJid) { toast('⚠️ Selecciona un grupo', 'error'); return }
     const body = {
-        enabled: gV('al-enabled') === 'true',
-        mode: gV('al-mode'),
-        action: gV('al-action'),
-        warnCount: parseInt(gV('al-warn-count')) || 3,
+        enabled: gV('al-enabled') === 'true', mode: gV('al-mode'),
+        action: gV('al-action'), warnCount: parseInt(gV('al-warn-count')) || 3,
         exemptAdmins: gV('al-exempt-admins') === 'true',
         allowedLinks: gV('al-allowed').split(',').map(l => l.trim()).filter(Boolean),
         blockedLinks: gV('al-blocked').split(',').map(l => l.trim()).filter(Boolean)
@@ -320,7 +298,6 @@ function renderWelcomeCanvas() {
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     const W = canvas.width, H = canvas.height
-
     const title = gV('wlc-title') || '¡Bienvenido!'
     const tcol = gV('wlc-title-color') || '#00D9FF'
     const ncol = gV('wlc-name-color') || '#FFFFFF'
@@ -343,76 +320,39 @@ function renderWelcomeCanvas() {
 
     const drawAll = (bgImg = null) => {
         ctx.clearRect(0, 0, W, H)
-
-        if (bgImg) {
-            ctx.drawImage(bgImg, 0, 0, W, H)
-            ctx.fillStyle = `rgba(0,0,0,${overlay})`
-            ctx.fillRect(0, 0, W, H)
-        } else {
-            const grd = ctx.createLinearGradient(0, 0, W, H)
-            grd.addColorStop(0, bg1); grd.addColorStop(1, bg2)
+        if (bgImg) { ctx.drawImage(bgImg, 0, 0, W, H); ctx.fillStyle = `rgba(0,0,0,${overlay})`; ctx.fillRect(0, 0, W, H) }
+        else {
+            const grd = ctx.createLinearGradient(0, 0, W, H); grd.addColorStop(0, bg1); grd.addColorStop(1, bg2)
             ctx.fillStyle = grd; ctx.fillRect(0, 0, W, H)
-            ctx.strokeStyle = 'rgba(0,217,255,.04)'; ctx.lineWidth = 1
-            for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke() }
-            for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke() }
         }
-
         const glow = ctx.createRadialGradient(ax, ay, 0, ax, ay, ar + 30)
         glow.addColorStop(0, bcol + '33'); glow.addColorStop(1, 'transparent')
         ctx.fillStyle = glow; ctx.fillRect(ax - ar - 30, ay - ar - 30, (ar + 30) * 2, (ar + 30) * 2)
-
-        ctx.save()
-        ctx.beginPath()
-        if (shape === 'square' || shape === 'rounded') {
-            const r2 = shape === 'rounded' ? 18 : 0
-            roundRect(ctx, ax - ar, ay - ar, ar * 2, ar * 2, r2)
-        } else {
-            ctx.arc(ax, ay, ar, 0, Math.PI * 2)
-        }
-        ctx.fillStyle = '#2a2a4a'; ctx.fill()
-        ctx.clip()
+        ctx.save(); ctx.beginPath()
+        if (shape === 'square' || shape === 'rounded') { const r2 = shape === 'rounded' ? 18 : 0; roundRect(ctx, ax - ar, ay - ar, ar * 2, ar * 2, r2) }
+        else { ctx.arc(ax, ay, ar, 0, Math.PI * 2) }
+        ctx.fillStyle = '#2a2a4a'; ctx.fill(); ctx.clip()
         ctx.font = `${ar * .88}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
-        ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillText('👤', ax, ay)
-        ctx.restore()
-
-        ctx.save()
-        ctx.beginPath()
-        if (shape === 'square' || shape === 'rounded') {
-            const r2 = shape === 'rounded' ? 18 : 0
-            roundRect(ctx, ax - ar, ay - ar, ar * 2, ar * 2, r2)
-        } else {
-            ctx.arc(ax, ay, ar, 0, Math.PI * 2)
-        }
+        ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillText('👤', ax, ay); ctx.restore()
+        ctx.save(); ctx.beginPath()
+        if (shape === 'square' || shape === 'rounded') { const r2 = shape === 'rounded' ? 18 : 0; roundRect(ctx, ax - ar, ay - ar, ar * 2, ar * 2, r2) }
+        else { ctx.arc(ax, ay, ar, 0, Math.PI * 2) }
         ctx.strokeStyle = bcol; ctx.lineWidth = bw
-        if (bstyle === 'dashed') ctx.setLineDash([8, 4])
-        else if (bstyle === 'dotted') ctx.setLineDash([2, 4])
-        else ctx.setLineDash([])
-        ctx.stroke()
-        ctx.restore()
-
+        if (bstyle === 'dashed') ctx.setLineDash([8, 4]); else if (bstyle === 'dotted') ctx.setLineDash([2, 4]); else ctx.setLineDash([])
+        ctx.stroke(); ctx.restore()
         const tx = ax + ar + 30, ty = H / 2 - (tsize + nsize + gsize + 28) / 2
-
         const drawText = (text, x, y, size, color, bold = false) => {
             if (shadow) { ctx.shadowColor = 'rgba(0,0,0,.8)'; ctx.shadowBlur = 6 }
-            ctx.fillStyle = color
-            ctx.font = `${bold ? 700 : 500} ${size}px 'Space Grotesk', sans-serif`
-            ctx.textAlign = 'left'; ctx.textBaseline = 'top'
-            ctx.fillText(text, x, y)
-            ctx.shadowBlur = 0
+            ctx.fillStyle = color; ctx.font = `${bold ? 700 : 500} ${size}px 'Space Grotesk', sans-serif`
+            ctx.textAlign = 'left'; ctx.textBaseline = 'top'; ctx.fillText(text, x, y); ctx.shadowBlur = 0
         }
-
         drawText(title, tx, ty, tsize, tcol, true)
         drawText('+521234567890', tx, ty + tsize + 8, nsize, ncol, true)
         drawText('a Grupo de Prueba', tx, ty + tsize + 8 + nsize + 6, gsize, gcol)
         drawText('42 miembros', tx, ty + tsize + 8 + nsize + 6 + gsize + 5, 13, '#888')
     }
-
-    if (bgUrl) {
-        const img = new Image(); img.crossOrigin = 'anonymous'
-        img.onload = () => drawAll(img)
-        img.onerror = () => drawAll(null)
-        img.src = bgUrl
-    } else drawAll(null)
+    if (bgUrl) { const img = new Image(); img.crossOrigin = 'anonymous'; img.onload = () => drawAll(img); img.onerror = () => drawAll(null); img.src = bgUrl }
+    else drawAll(null)
 }
 
 function roundRect(ctx, x, y, w, h, r) {
@@ -428,24 +368,18 @@ function downloadWelcomePreview() {
 }
 
 const LOGO_ZONES = [
-    { id: 'menu', label: 'Menú Principal' },
-    { id: 'gacha', label: 'Menú Gacha' },
-    { id: 'grupo', label: 'Menú Grupo' },
-    { id: 'welcome', label: 'Welcome' },
-    { id: 'general', label: 'General' },
+    { id: 'menu', label: 'Menú Principal' }, { id: 'gacha', label: 'Menú Gacha' },
+    { id: 'grupo', label: 'Menú Grupo' }, { id: 'welcome', label: 'Welcome' }, { id: 'general', label: 'General' }
 ]
 
 function renderLogoZones() {
     const grid = document.getElementById('logos-grid')
     if (!grid) return
     grid.innerHTML = LOGO_ZONES.map(z => `
-        <div class="logo-zone-card">
-            <h4>${z.label}</h4>
+        <div class="logo-zone-card"><h4>${z.label}</h4>
             <div class="logo-preview-box" id="lpb-${z.id}"><span>Sin imagen</span></div>
             <input type="file" accept="image/*" onchange="uploadLogo('${z.id}',this)">
-            <div class="logo-actions">
-                <button onclick="deleteLogo('${z.id}')" class="btn-sm btn-danger" style="margin-top:.4rem;width:100%">🗑️ Eliminar</button>
-            </div>
+            <div class="logo-actions"><button onclick="deleteLogo('${z.id}')" class="btn-sm btn-danger" style="margin-top:.4rem;width:100%">🗑️ Eliminar</button></div>
         </div>`).join('')
     loadPresets()
 }
@@ -455,11 +389,7 @@ async function loadPresets() {
     const grid = document.getElementById('presets-grid')
     if (!grid) return
     if (!d.success || !d.presets.length) { grid.innerHTML = '<p style="color:var(--text-muted);font-size:.85rem">No hay logos predeterminados.</p>'; return }
-    grid.innerHTML = d.presets.map(p => `
-        <div class="preset-item" onclick="showPresetMenu('${esc(p.url)}','${esc(p.name)}')">
-            <img src="${esc(p.url)}" alt="${esc(p.name)}">
-            <span>${esc(p.name)}</span>
-        </div>`).join('')
+    grid.innerHTML = d.presets.map(p => `<div class="preset-item" onclick="showPresetMenu('${esc(p.url)}','${esc(p.name)}')"><img src="${esc(p.url)}" alt="${esc(p.name)}"><span>${esc(p.name)}</span></div>`).join('')
 }
 
 function showPresetMenu(url, name) {
@@ -475,11 +405,8 @@ async function fetchImageAsBase64(url) {
 
 async function uploadLogoBase64(zone, imageBase64) {
     const d = await api('/api/dashboard/logo', 'POST', { zone, imageBase64 })
-    if (d.success) {
-        const box = document.getElementById('lpb-' + zone)
-        if (box) box.innerHTML = `<img src="${d.url}" alt="${zone}">`
-        toast('✅ Logo aplicado', 'success')
-    } else toast('❌ ' + d.error, 'error')
+    if (d.success) { const box = document.getElementById('lpb-' + zone); if (box) box.innerHTML = `<img src="${d.url}" alt="${zone}">`; toast('✅ Logo aplicado', 'success') }
+    else toast('❌ ' + d.error, 'error')
 }
 
 async function uploadLogo(zone, input) {
@@ -488,11 +415,8 @@ async function uploadLogo(zone, input) {
     const reader = new FileReader()
     reader.onload = async e => {
         const d = await api('/api/dashboard/logo', 'POST', { zone, imageBase64: e.target.result })
-        if (d.success) {
-            const box = document.getElementById('lpb-' + zone)
-            if (box) box.innerHTML = `<img src="${d.url}" alt="${zone}">`
-            toast('✅ Logo subido', 'success')
-        } else toast('❌ ' + d.error, 'error')
+        if (d.success) { const box = document.getElementById('lpb-' + zone); if (box) box.innerHTML = `<img src="${d.url}" alt="${zone}">`; toast('✅ Logo subido', 'success') }
+        else toast('❌ ' + d.error, 'error')
     }
     reader.readAsDataURL(file)
 }
@@ -525,40 +449,29 @@ async function loadChatCommands() {
     botCmds = d.commands || []
     const grid = document.getElementById('cmd-grid')
     if (!grid) return
-    grid.innerHTML = botCmds.slice(0, 50).map(c => `
-        <button class="cmd-chip" onclick="useCommand('${esc(c)}')">${esc(c)}</button>`).join('')
+    grid.innerHTML = botCmds.slice(0, 50).map(c => `<button class="cmd-chip" onclick="useCommand('${esc(c)}')">${esc(c)}</button>`).join('')
 }
 
-function useCommand(cmd) {
-    const input = document.getElementById('chat-input')
-    if (input) { input.value = cmd; input.focus() }
-}
+function useCommand(cmd) { const input = document.getElementById('chat-input'); if (input) { input.value = cmd; input.focus() } }
 
 async function sendChatMsg() {
     const input = document.getElementById('chat-input')
     const msg = input?.value.trim()
     if (!msg) return
     input.value = ''
-
     const prefix = '.'
     const cmdName = (msg.startsWith(prefix) ? msg.slice(prefix.length) : msg).split(' ')[0].toLowerCase()
-
     if (!botCmds.map(c => c.toLowerCase()).includes(cmdName)) {
         appendMsg('❌ Este chat solo es para ejecutar comandos del bot.\nUsa *' + prefix + 'menu* para ver la lista de comandos disponibles.', 'bot')
         return
     }
-
     appendMsg(msg, 'user')
     chatHistory.push({ role: 'user', content: msg })
-
     const typing = appendMsg('Escribiendo...', 'bot', true)
     const d = await api('/api/chat/message', 'POST', { message: msg, history: chatHistory.slice(-12) })
     typing.remove()
-
-    if (d.success) {
-        chatHistory.push({ role: 'assistant', content: d.reply })
-        appendMsg(d.reply, 'bot')
-    } else appendMsg('❌ Error: ' + (d.error || 'desconocido'), 'bot')
+    if (d.success) { chatHistory.push({ role: 'assistant', content: d.reply }); appendMsg(d.reply, 'bot') }
+    else appendMsg('❌ Error: ' + (d.error || 'desconocido'), 'bot')
 }
 
 function appendMsg(text, role, isTyping = false) {
@@ -572,20 +485,15 @@ function appendMsg(text, role, isTyping = false) {
 
 function fmtMsg(t) {
     return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
-        .replace(/`([^`]+)`/g, '<code>$1</code>')
-        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-        .replace(/\n/g, '<br>')
+        .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>').replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/\*([^*]+)\*/g, '<em>$1</em>').replace(/\n/g, '<br>')
 }
 
 async function loadProfile() {
     const d = await api('/api/profile')
     if (!d.success) return
     const p = d.profile
-    setV('edit-display-name', p.displayName || '')
-    setV('edit-bio', p.bio || '')
-    setV('edit-avatar', p.avatar || '')
+    setV('edit-display-name', p.displayName || ''); setV('edit-bio', p.bio || ''); setV('edit-avatar', p.avatar || '')
     document.getElementById('prf-username').textContent = p.username
     document.getElementById('prf-display').textContent = p.displayName || p.username
     document.getElementById('prf-phone').textContent = '📱 ' + (p.phone || p.username)
@@ -593,15 +501,12 @@ async function loadProfile() {
     document.getElementById('prf-money').textContent = '💰 $' + (p.money || 0)
     document.getElementById('prf-bio').textContent = p.bio || 'Sin biografía'
     if (p.avatar) document.getElementById('profile-avatar-el').innerHTML = `<img src="${esc(p.avatar)}" alt="Avatar">`
-
     const emailDiv = document.getElementById('prf-email-status')
     const emailForm = document.getElementById('email-form-wrap')
     const emailVMsg = document.getElementById('email-verified-msg')
     if (p.email && p.emailVerified) {
         emailDiv.innerHTML = `<p style="color:var(--text-muted);font-size:.85rem">📧 ${esc(p.email)} <span style="color:var(--success)">✅ verificado</span></p>`
-        emailVMsg.style.display = 'block'
-        emailForm.style.display = 'none'
-        setV('prf-email-input', p.email)
+        emailVMsg.style.display = 'block'; emailForm.style.display = 'none'; setV('prf-email-input', p.email)
     } else if (p.email && !p.emailVerified) {
         emailDiv.innerHTML = `<p style="color:var(--text-muted);font-size:.85rem">📧 ${esc(p.email)} <span style="color:var(--warning)">⚠️ no verificado</span></p>`
         setV('prf-email-input', p.email)
@@ -609,29 +514,32 @@ async function loadProfile() {
 }
 
 async function updateProfile() {
-    const d = await api('/api/profile/update', 'POST', {
-        displayName: gV('edit-display-name'),
-        bio: gV('edit-bio'),
-        avatar: gV('edit-avatar')
-    })
+    const d = await api('/api/profile/update', 'POST', { displayName: gV('edit-display-name'), bio: gV('edit-bio'), avatar: gV('edit-avatar') })
     if (d.success) { toast('✅ Perfil actualizado', 'success'); loadProfile() }
     else toast('❌ ' + d.error, 'error')
+}
+
+async function changePassword() {
+    const current = prompt('Ingresa tu contraseña actual:')
+    if (!current) return
+    const newPass = prompt('Ingresa tu nueva contraseña (mínimo 6 caracteres):')
+    if (!newPass || newPass.length < 6) { toast('❌ Contraseña mínimo 6 caracteres', 'error'); return }
+    const d = await api('/api/auth/change-password', 'POST', { currentPassword: current, newPassword: newPass })
+    toast(d.success ? '✅ ' + d.message : '❌ ' + d.error, d.success ? 'success' : 'error')
 }
 
 async function sendEmailCode() {
     const email = gV('prf-email-input').trim()
     if (!email.includes('@')) { toast('⚠️ Email inválido', 'error'); return }
-    const btn = document.getElementById('send-code-btn')
-    btn.disabled = true; btn.textContent = '⏳ Enviando...'
+    const btn = document.getElementById('send-code-btn'); btn.disabled = true; btn.textContent = '⏳ Enviando...'
     const d = await api('/api/profile/email/send-code', 'POST', { email })
     btn.disabled = false; btn.textContent = '📨 Enviar Código'
-    if (d.success) { document.getElementById('email-code-wrap').style.display = 'block'; toast('✅ Código enviado a ' + email, 'success') }
+    if (d.success) { document.getElementById('email-code-wrap').style.display = 'block'; toast('✅ Código enviado', 'success') }
     else toast('❌ ' + d.error, 'error')
 }
 
 async function verifyEmailCode() {
-    const email = gV('prf-email-input').trim()
-    const code = gV('prf-email-code').trim()
+    const email = gV('prf-email-input').trim(); const code = gV('prf-email-code').trim()
     if (!code) { toast('⚠️ Ingresa el código', 'error'); return }
     const d = await api('/api/profile/email/verify', 'POST', { email, code })
     if (d.success) { toast('✅ Correo verificado', 'success'); loadProfile() }

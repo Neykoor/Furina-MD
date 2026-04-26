@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vincular Bot – Asta Bot</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<style>
+.vc-wrap{max-width:520px;margin:0 auto;padding:2rem 1rem}
+.vc-card{background:var(--bg-sec);border:1px solid var(--border-md);border-radius:var(--radius-xl);padding:2rem;margin-bottom:1.5rem}
+.vc-tabs{display:flex;background:var(--bg-ter);border-radius:var(--radius);padding:4px;gap:4px;margin-bottom:1.75rem}
+.vc-tab{flex:1;padding:.55rem;border:none;border-radius:8px;background:transparent;color:var(--text-secondary);font-family:var(--font);font-size:.88rem;font-weight:600;cursor:pointer;transition:all var(--trans)}
+.vc-tab.active{background:var(--bg-sec);color:var(--text-primary);box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.vc-panel{display:none;animation:fadeUp .25s ease}
+.vc-panel.active{display:block}
+.qr-box{background:var(--bg-ter);border-radius:var(--radius-lg);padding:1.5rem;text-align:center;min-height:260px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px dashed var(--border)}
+.qr-box.has-qr{border-color:var(--accent);border-style:solid}
+.qr-box img{width:220px;height:220px;border-radius:12px;box-shadow:0 0 24px rgba(0,217,255,.2)}
+.qr-timer{font-size:.82rem;color:var(--text-muted);margin-top:.75rem}
+.qr-timer span{color:var(--warning);font-weight:700}
+.code-display{font-family:var(--font-mono);font-size:2.4rem;font-weight:700;letter-spacing:.18em;color:var(--accent);text-align:center;padding:1.25rem;background:var(--bg-ter);border-radius:var(--radius-lg);border:1px solid var(--accent);margin:1rem 0}
+.step-list{list-style:none;counter-reset:steps;display:flex;flex-direction:column;gap:.6rem;margin:.75rem 0}
+.step-list li{counter-increment:steps;display:flex;align-items:flex-start;gap:.75rem;font-size:.88rem;color:var(--text-secondary)}
+.step-list li::before{content:counter(steps);min-width:22px;height:22px;background:var(--accent-g);border:1px solid var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;color:var(--accent);flex-shrink:0;margin-top:.1rem}
+.success-banner{background:rgba(0,224,138,.08);border:1px solid rgba(0,224,138,.25);border-radius:var(--radius-lg);padding:1.5rem;text-align:center}
+.success-banner .sb-icon{font-size:3rem;margin-bottom:.75rem}
+.success-banner h3{color:var(--success);margin-bottom:.5rem}
+.success-banner p{color:var(--text-secondary);font-size:.9rem}
+.loading-dots::after{content:'...';animation:dots 1.2s steps(4,end) infinite}
+@keyframes dots{0%,20%{content:'';}40%{content:'.';}60%{content:'..';}80%,100%{content:'...'}}
+</style>
+</head>
+<body class="auth-body">
+
+<div class="auth-bg"><div class="auth-grid"></div></div>
+
+<div style="position:relative;z-index:1;padding:1.5rem 1rem">
+  <div class="vc-wrap">
+    <!-- Header -->
+    <div style="text-align:center;margin-bottom:2rem">
+      <img id="vc-logo" src="" onerror="this.style.display='none'" style="width:52px;height:52px;border-radius:12px;margin-bottom:1rem;box-shadow:0 0 20px rgba(0,217,255,.3)">
+      <h1 style="font-family:var(--font-display);font-size:1.6rem;font-weight:800;margin-bottom:.3rem">Vincular Bot</h1>
+      <p style="color:var(--text-muted);font-size:.9rem">Conecta tu WhatsApp al panel</p>
+    </div>
+
+    <!-- Success state -->
+    <div id="success-state" style="display:none" class="vc-card">
+      <div class="success-banner">
+        <div class="sb-icon">🎉</div>
+        <h3>¡Bot vinculado correctamente!</h3>
+        <p id="success-info">Tu bot ya está activo y conectado al panel.</p>
+        <a href="/dashboard" class="btn-primary" style="display:inline-flex;margin-top:1.25rem">Ir al Dashboard →</a>
+      </div>
+    </div>
+
+    <!-- Connection card -->
+    <div id="connect-card" class="vc-card">
+      <div class="vc-tabs">
+        <button class="vc-tab active" id="tab-qr-btn"   onclick="switchTab('qr')">📷 Código QR</button>
+        <button class="vc-tab"        id="tab-code-btn" onclick="switchTab('code')">🔢 Código</button>
+      </div>
+
+      <!-- QR Panel -->
+      <div id="panel-qr" class="vc-panel active">
+        <ul class="step-list">
+          <li>Abre WhatsApp en tu teléfono</li>
+          <li>Ve a <strong>⋮ Menú → Dispositivos vinculados</strong></li>
+          <li>Toca <strong>Vincular un dispositivo</strong></li>
+          <li>Escanea el código QR de abajo</li>
+        </ul>
+        <div class="qr-box" id="qr-box">
+          <p style="color:var(--text-muted);font-size:.9rem">Presiona el botón para generar el QR</p>
+        </div>
+        <div class="qr-timer" id="qr-timer" style="display:none">⏳ Expira en <span id="qr-countdown">45</span>s</div>
+        <button onclick="generateQR()" class="btn-primary btn-full" style="margin-top:1rem" id="qr-btn">📷 Generar QR</button>
+      </div>
+
+      <!-- Code Panel -->
+      <div id="panel-code" class="vc-panel">
+        <ul class="step-list">
+          <li>Abre WhatsApp en tu teléfono</li>
+          <li>Ve a <strong>⋮ Menú → Dispositivos vinculados</strong></li>
+          <li>Toca <strong>Vincular con número de teléfono</strong></li>
+          <li>Ingresa tu número abajo y genera el código</li>
+          <li>Escribe el código de 8 dígitos en WhatsApp</li>
+        </ul>
+        <div class="input-group" style="margin-top:1rem">
+          <label>Tu número de WhatsApp</label>
+          <input type="tel" id="code-phone" placeholder="+52 1 234 567 890" style="font-size:1rem">
+        </div>
+        <button onclick="generateCode()" class="btn-primary btn-full" id="code-btn">🔢 Generar Código</button>
+        <div id="code-result" style="display:none">
+          <div class="code-display" id="code-value">— — — —</div>
+          <div style="display:flex;gap:.5rem;justify-content:center">
+            <button onclick="copyCode()" class="btn-sm btn-outline">📋 Copiar</button>
+          </div>
+          <p style="text-align:center;color:var(--text-muted);font-size:.82rem;margin-top:.75rem" id="code-instr"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status card -->
+    <div id="status-card" class="vc-card" style="display:none">
+      <h4 style="margin-bottom:1rem">⏳ Esperando conexión<span class="loading-dots"></span></h4>
+      <p style="color:var(--text-muted);font-size:.88rem">Una vez que escanees el QR o ingreses el código, el bot se conectará automáticamente.</p>
+      <div style="margin-top:1rem;padding:.75rem;background:var(--bg-ter);border-radius:var(--radius);font-size:.82rem;color:var(--text-muted)">
+        Verificando cada 3 segundos...
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:1rem">
+      <a href="/dashboard" style="color:var(--text-muted);font-size:.85rem">← Volver al Dashboard</a>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const TOKEN   = localStorage.getItem('token')
+let currentTempId  = null
+let pollInterval   = null
+let qrTimerInterval = null
+let rawCode = ''
+
+if (!TOKEN) window.location.href = '/login'
+
+// Load logo
+fetch('/api/info').then(r=>r.json()).then(d=>{ if(d.logo) document.getElementById('vc-logo').src = d.logo }).catch(()=>{})
+
+function switchTab(tab) {
+    document.querySelectorAll('.vc-tab').forEach(b=>b.classList.remove('active'))
+    document.querySelectorAll('.vc-panel').forEach(p=>p.classList.remove('active'))
+    document.getElementById('tab-'+tab+'-btn').classList.add('active')
+    document.getElementById('panel-'+tab).classList.add('active')
+    stopPolling()
+    document.getElementById('status-card').style.display = 'none'
+}
+
+async function generateQR() {
+    const btn = document.getElementById('qr-btn')
+    btn.textContent = '⏳ Generando...'
+    btn.disabled = true
+    const box = document.getElementById('qr-box')
+    box.innerHTML = '<p style="color:var(--text-muted)">Generando QR<span class="loading-dots"></span></p>'
+    box.classList.remove('has-qr')
+
+    try {
+        const r = await fetch('/api/bot/connect/qr', { method:'POST', headers:{ 'Authorization':'Bearer '+TOKEN,'Content-Type':'application/json' } })
+        const d = await r.json()
+        if (d.success) {
+            box.classList.add('has-qr')
+            box.innerHTML = `<img src="${d.qrUrl}?t=${Date.now()}" alt="QR Code" id="qr-img">`
+            currentTempId = d.tempId
+            startQRTimer(d.expiresIn || 45)
+            document.getElementById('qr-timer').style.display = 'block'
+            document.getElementById('status-card').style.display = 'block'
+            btn.textContent = '🔄 Regenerar QR'
+            btn.disabled = false
+            startPolling()
+        } else {
+            box.innerHTML = `<p style="color:var(--danger)">❌ ${d.error}</p>`
+            btn.textContent = '📷 Generar QR'; btn.disabled = false
+        }
+    } catch(e) {
+        box.innerHTML = `<p style="color:var(--danger)">❌ Error de conexión</p>`
+        btn.textContent = '📷 Generar QR'; btn.disabled = false
+    }
+}
+
+async function generateCode() {
+    const phone = document.getElementById('code-phone').value.replace(/\D/g,'')
+    if (phone.length < 10) { toast('⚠️ Número inválido (mínimo 10 dígitos)', 'error'); return }
+    const btn = document.getElementById('code-btn')
+    btn.textContent = '⏳ Generando...'; btn.disabled = true
+
+    try {
+        const r = await fetch('/api/bot/connect/code', { method:'POST', headers:{'Authorization':'Bearer '+TOKEN,'Content-Type':'application/json'}, body:JSON.stringify({ phoneNumber:phone }) })
+        const d = await r.json()
+        if (d.success) {
+            rawCode = d.rawCode || d.code.replace(/-/g,'')
+            document.getElementById('code-value').textContent = d.code
+            document.getElementById('code-instr').textContent = d.instructions || ''
+            document.getElementById('code-result').style.display = 'block'
+            document.getElementById('status-card').style.display = 'block'
+            currentTempId = phone
+            btn.textContent = '🔄 Nuevo Código'; btn.disabled = false
+            startPolling()
+        } else {
+            toast('❌ ' + d.error, 'error')
+            btn.textContent = '🔢 Generar Código'; btn.disabled = false
+        }
+    } catch(e) {
+        toast('❌ Error de conexión', 'error')
+        btn.textContent = '🔢 Generar Código'; btn.disabled = false
+    }
+}
+
+function copyCode() {
+    navigator.clipboard.writeText(rawCode || document.getElementById('code-value').textContent.replace(/-/g,'')).then(()=>toast('📋 Código copiado','success'))
+}
+
+function startQRTimer(seconds) {
+    clearInterval(qrTimerInterval)
+    let remaining = seconds
+    document.getElementById('qr-countdown').textContent = remaining
+    qrTimerInterval = setInterval(()=>{
+        remaining--
+        if (remaining <= 0) {
+            clearInterval(qrTimerInterval)
+            document.getElementById('qr-countdown').textContent = '0'
+            document.getElementById('qr-timer').innerHTML = '<span style="color:var(--danger)">⚠️ QR expirado. Regenera.</span>'
+        } else document.getElementById('qr-countdown').textContent = remaining
+    }, 1000)
+}
+
+function startPolling() {
+    stopPolling()
+    pollInterval = setInterval(async ()=>{
+        try {
+            const r = await fetch(`/api/bot/status/${currentTempId}`, { headers:{'Authorization':'Bearer '+TOKEN} })
+            const d = await r.json()
+            if (d.connected) {
+                stopPolling()
+                clearInterval(qrTimerInterval)
+                // Link to user
+                try {
+                    await fetch('/api/bot/link', { method:'POST', headers:{'Authorization':'Bearer '+TOKEN,'Content-Type':'application/json'}, body:JSON.stringify({ phoneNumber:d.number||currentTempId }) })
+                } catch {}
+                showSuccess(d.name, d.number)
+            }
+        } catch {}
+    }, 3000)
+}
+
+function stopPolling() { clearInterval(pollInterval) }
+
+function showSuccess(name, number) {
+    document.getElementById('connect-card').style.display = 'none'
+    document.getElementById('status-card').style.display  = 'none'
+    document.getElementById('success-state').style.display = 'block'
+    document.getElementById('success-info').textContent   = `Bot "${name || 'Sub-Bot'}" (+${number || ''}) conectado y listo.`
+    toast('🎉 ¡Bot vinculado!', 'success')
+    setTimeout(()=>window.location.href='/dashboard', 3000)
+}
+
+function toast(msg, type='') {
+    const el = document.getElementById('toast')
+    el.textContent = msg; el.className = 'toast '+type+' show'
+    clearTimeout(el._t); el._t = setTimeout(()=>el.classList.remove('show'), 3200)
+}
+</script>
+</body>
+</html>

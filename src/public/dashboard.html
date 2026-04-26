@@ -1,398 +1,572 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard – Asta Bot</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
-<style>
-.cmd-grid{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:1rem}
-.cmd-chip{padding:.3rem .75rem;background:var(--bg-ter);border:1px solid var(--border);border-radius:100px;font-size:.78rem;color:var(--accent);cursor:pointer;transition:all var(--trans);font-family:var(--font-mono)}
-.cmd-chip:hover{background:var(--accent-g);border-color:var(--accent)}
-.wlc-layout{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
-.wlc-canvas-wrap canvas{max-width:100%;border-radius:var(--radius-lg);border:1px solid var(--border);display:block}
-.wlc-ctrl-scroll{display:flex;flex-direction:column;gap:.5rem;max-height:600px;overflow-y:auto;padding-right:.5rem}
-.ctrl-row{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
-.section-badge{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:.5rem;display:block}
-.sub-btn{padding-left:2.5rem!important;font-size:.83rem!important}
-.antilink-editor{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem}
-@media(max-width:900px){.wlc-layout{grid-template-columns:1fr}}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard – Asta Bot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Syne:wght@700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .cmd-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .4rem;
+      margin-bottom: 1rem
+    }
+
+    .cmd-chip {
+      padding: .3rem .75rem;
+      background: var(--bg-ter);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      font-size: .78rem;
+      color: var(--accent);
+      cursor: pointer;
+      transition: all var(--trans);
+      font-family: var(--font-mono)
+    }
+
+    .cmd-chip:hover {
+      background: var(--accent-g);
+      border-color: var(--accent)
+    }
+
+    .wlc-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem
+    }
+
+    .wlc-canvas-wrap canvas {
+      max-width: 100%;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      display: block
+    }
+
+    .wlc-ctrl-scroll {
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+      max-height: 600px;
+      overflow-y: auto;
+      padding-right: .5rem
+    }
+
+    .ctrl-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .75rem
+    }
+
+    .section-badge {
+      font-size: .72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--text-muted);
+      margin-bottom: .5rem;
+      display: block
+    }
+
+    .sub-btn {
+      padding-left: 2.5rem !important;
+      font-size: .83rem !important
+    }
+
+    .antilink-editor {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem
+    }
+
+    @media(max-width:900px) {
+      .wlc-layout {
+        grid-template-columns: 1fr
+      }
+    }
+  </style>
 </head>
+
 <body class="dashboard-body">
 
-<aside class="sidebar" id="sidebar">
-  <div class="sb-brand">
-    <img id="sidebar-logo" src="" onerror="this.style.display='none'" class="sb-logo">
-    <span class="sb-title">Asta Bot</span>
-  </div>
-  <nav class="sb-nav">
-    <button class="nav-btn active" data-section="overview" onclick="showSection('overview',this)"><span class="nav-icon">📊</span><span>Resumen</span></button>
-    <button class="nav-btn" data-section="config" onclick="showSection('config',this)"><span class="nav-icon">⚙️</span><span>Configuración</span></button>
-    <button class="nav-btn has-submenu" data-section="groups" onclick="toggleSubmenu('groups-submenu',this)">
-      <span class="nav-icon">👥</span><span>Grupos</span><span class="sub-arrow">▾</span>
-    </button>
-    <div id="groups-submenu" class="submenu" style="display:none">
-      <button class="nav-btn sub-btn" data-section="groups-list" onclick="showSection('groups-list',this)"><span class="nav-icon">📋</span><span>Mis Grupos</span></button>
-      <button class="nav-btn sub-btn" data-section="welcome" onclick="showSection('welcome',this)"><span class="nav-icon">👋</span><span>Welcome</span></button>
-      <button class="nav-btn sub-btn" data-section="antilink" onclick="showSection('antilink',this)"><span class="nav-icon">🛡️</span><span>Anti-Link</span></button>
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-brand">
+      <img id="sidebar-logo" src="" onerror="this.style.display='none'" class="sb-logo">
+      <span class="sb-title">Asta Bot</span>
     </div>
-    <button class="nav-btn" data-section="logos" onclick="showSection('logos',this)"><span class="nav-icon">🖼️</span><span>Logos</span></button>
-    <button class="nav-btn" data-section="downloads" onclick="showSection('downloads',this)"><span class="nav-icon">⬇️</span><span>Descargas</span></button>
-    <button class="nav-btn" data-section="chat" onclick="showSection('chat',this)"><span class="nav-icon">🤖</span><span>Chat Bot</span></button>
-    <button class="nav-btn" data-section="profile" onclick="showSection('profile',this)"><span class="nav-icon">👤</span><span>Perfil</span></button>
-  </nav>
-  <div class="sb-footer">
-    <button onclick="logout()" class="btn-logout">🚪 Salir</button>
-  </div>
-</aside>
-
-<div class="sidebar-overlay" id="sb-overlay" onclick="closeSidebar()"></div>
-
-<main class="main-wrap">
-  <header class="topbar">
-    <button class="hamburger" onclick="toggleSidebar()">☰</button>
-    <h1 class="topbar-title" id="topbar-title">Resumen</h1>
-    <div class="topbar-right">
-      <span class="role-pill" id="role-pill">USER</span>
-      <span class="user-name" id="user-name">—</span>
-    </div>
-  </header>
-
-  <section id="sec-overview" class="sec active">
-    <div id="no-bot-banner" class="no-bot-banner" style="display:none">
-      <div class="nbb-icon">🤖</div>
-      <h3>No tienes un Sub-Bot vinculado</h3>
-      <p>Conéctate para empezar a usar el panel completo</p>
-      <button onclick="goVincular()" class="btn-primary" style="margin-top:1rem">📱 Vincular Bot</button>
-    </div>
-    <div id="bot-overview" style="display:none">
-      <div class="status-hero" id="status-hero">
-        <div class="sh-dot" id="sh-dot">🔴</div>
-        <div class="sh-info">
-          <h2 id="sh-name">—</h2>
-          <p id="sh-number">—</p>
-          <span class="status-badge" id="sh-badge">Desconectado</span>
-        </div>
-        <div class="sh-actions">
-          <button onclick="restartUserBot()" class="btn-sm btn-warn">🔄 Reiniciar</button>
-          <button onclick="confirmDeleteSession()" class="btn-sm btn-outline">🗑️ Sesión</button>
-          <button onclick="confirmDeleteBot()" class="btn-sm btn-danger">❌ Eliminar Bot</button>
-        </div>
+    <nav class="sb-nav">
+      <button class="nav-btn active" data-section="overview" onclick="showSection('overview',this)"><span
+          class="nav-icon">📊</span><span>Resumen</span></button>
+      <button class="nav-btn" data-section="config" onclick="showSection('config',this)"><span
+          class="nav-icon">⚙️</span><span>Configuración</span></button>
+      <button class="nav-btn has-submenu" data-section="groups" onclick="toggleSubmenu('groups-submenu',this)">
+        <span class="nav-icon">👥</span><span>Grupos</span><span class="sub-arrow">▾</span>
+      </button>
+      <div id="groups-submenu" class="submenu" style="display:none">
+        <button class="nav-btn sub-btn" data-section="groups-list" onclick="showSection('groups-list',this)"><span
+            class="nav-icon">📋</span><span>Mis Grupos</span></button>
+        <button class="nav-btn sub-btn" data-section="welcome" onclick="showSection('welcome',this)"><span
+            class="nav-icon">👋</span><span>Welcome</span></button>
+        <button class="nav-btn sub-btn" data-section="antilink" onclick="showSection('antilink',this)"><span
+            class="nav-icon">🛡️</span><span>Anti-Link</span></button>
       </div>
-      <div class="stats-row">
-        <div class="stat-card"><div class="sc-icon">👥</div><div class="sc-val" id="ov-groups">0</div><div class="sc-lbl">Grupos</div></div>
-        <div class="stat-card"><div class="sc-icon">⏱️</div><div class="sc-val" id="ov-uptime">0h</div><div class="sc-lbl">Uptime</div></div>
-        <div class="stat-card"><div class="sc-icon">🌐</div><div class="sc-val" id="ov-mode">—</div><div class="sc-lbl">Modo</div></div>
-        <div class="stat-card"><div class="sc-icon">💰</div><div class="sc-val" id="ov-money">$0</div><div class="sc-lbl">Saldo</div></div>
+      <button class="nav-btn" data-section="logos" onclick="showSection('logos',this)"><span
+          class="nav-icon">🖼️</span><span>Logos</span></button>
+      <button class="nav-btn" data-section="downloads" onclick="showSection('downloads',this)"><span
+          class="nav-icon">⬇️</span><span>Descargas</span></button>
+      <button class="nav-btn" data-section="chat" onclick="showSection('chat',this)"><span
+          class="nav-icon">🤖</span><span>Chat Bot</span></button>
+      <button class="nav-btn" data-section="profile" onclick="showSection('profile',this)"><span
+          class="nav-icon">👤</span><span>Perfil</span></button>
+    </nav>
+    <div class="sb-footer">
+      <button onclick="logout()" class="btn-logout">🚪 Salir</button>
+    </div>
+  </aside>
+
+  <div class="sidebar-overlay" id="sb-overlay" onclick="closeSidebar()"></div>
+
+  <main class="main-wrap">
+    <header class="topbar">
+      <button class="hamburger" onclick="toggleSidebar()">☰</button>
+      <h1 class="topbar-title" id="topbar-title">Resumen</h1>
+      <div class="topbar-right">
+        <span class="role-pill" id="role-pill">USER</span>
+        <span class="user-name" id="user-name">—</span>
       </div>
-    </div>
-  </section>
+    </header>
 
-  <section id="sec-config" class="sec">
-    <div class="sec-header"><h2>⚙️ Configuración del Bot</h2></div>
-    <div id="config-nobot" class="no-access" style="display:none">🔒 Necesitas un bot activo. <a href="/vincular" style="color:var(--accent)">Vincular Bot →</a></div>
-    <div id="config-main" style="display:none">
-      <form onsubmit="saveConfig(event)">
-        <div class="form-grid">
-          <div class="input-group"><label>Nombre del Bot</label><input type="text" id="cfg-name" maxlength="30" placeholder="Mi Bot"></div>
-          <div class="input-group"><label>Modo</label><select id="cfg-mode"><option value="public">🔓 Público</option><option value="private">🔐 Privado</option></select></div>
-          <div class="input-group"><label>Anti-Privado</label><select id="cfg-antipriv"><option value="false">❌ Off</option><option value="true">✅ On</option></select></div>
-          <div class="input-group"><label>Anti-Spam</label><select id="cfg-antispam"><option value="true">✅ On</option><option value="false">❌ Off</option></select></div>
-          <div class="input-group"><label>Cooldown (ms)</label><input type="number" id="cfg-cooldown" min="1000" max="60000" step="500" value="3000"></div>
-        </div>
-        <button type="submit" class="btn-primary">💾 Guardar Cambios</button>
-      </form>
-    </div>
-  </section>
-
-  <section id="sec-groups-list" class="sec">
-    <div class="sec-header"><h2>👥 Mis Grupos</h2></div>
-    <div id="groups-list-nobot" class="no-access" style="display:none">🔒 Necesitas un bot activo. <a href="/vincular" style="color:var(--accent)">Vincular Bot →</a></div>
-    <div id="groups-list-main" style="display:none">
-      <div class="groups-grid" id="groups-grid"></div>
-    </div>
-  </section>
-
-  <section id="sec-welcome" class="sec">
-    <div class="sec-header"><h2>👋 Configurar Welcome</h2></div>
-    <div id="welcome-nobot" class="no-access" style="display:none">🔒 Necesitas un bot activo. <a href="/vincular" style="color:var(--accent)">Vincular Bot →</a></div>
-    <div id="welcome-main" style="display:none">
-      <div class="input-group" style="max-width:420px;margin-bottom:1.5rem">
-        <label>Seleccionar Grupo</label>
-        <select id="wlc-group-select" onchange="loadWelcomeForGroup(this.value)">
-          <option value="">— Selecciona un grupo —</option>
-        </select>
+    <section id="sec-overview" class="sec active">
+      <div id="no-bot-banner" class="no-bot-banner" style="display:none">
+        <div class="nbb-icon">🤖</div>
+        <h3>No tienes un Sub-Bot vinculado</h3>
+        <p>Conéctate para empezar a usar el panel completo</p>
+        <button onclick="goVincular()" class="btn-primary" style="margin-top:1rem">📱 Vincular Bot</button>
       </div>
-      <div id="wlc-editor" style="display:none">
-        <div class="wlc-layout">
-          <div>
-            <span class="section-badge">Vista previa</span>
-            <div class="wlc-canvas-wrap">
-              <canvas id="wlc-canvas" width="600" height="300"></canvas>
-            </div>
-            <div style="display:flex;gap:.5rem;margin-top:.6rem">
-              <button onclick="renderWelcomeCanvas()" class="btn-sm btn-outline">🔄 Actualizar</button>
-              <button onclick="downloadWelcomePreview()" class="btn-sm btn-outline">📥 Descargar</button>
-            </div>
+      <div id="bot-overview" style="display:none">
+        <div class="status-hero" id="status-hero">
+          <div class="sh-dot" id="sh-dot">🔴</div>
+          <div class="sh-info">
+            <h2 id="sh-name">—</h2>
+            <p id="sh-number">—</p>
+            <span class="status-badge" id="sh-badge">Desconectado</span>
           </div>
-          <div class="wlc-ctrl-scroll">
-            <span class="section-badge">🎨 Fondo</span>
-            <div class="ctrl-row">
-              <div class="input-group"><label>Color 1</label><input type="color" id="wlc-bg1" value="#0B0F19" oninput="renderWelcomeCanvas()"></div>
-              <div class="input-group"><label>Color 2</label><input type="color" id="wlc-bg2" value="#1a1a3e" oninput="renderWelcomeCanvas()"></div>
-            </div>
-            <div class="input-group"><label>Imagen de fondo (URL)</label><input type="url" id="wlc-bg-url" placeholder="https://..." oninput="renderWelcomeCanvas()"></div>
-            <div class="input-group"><label>Opacidad overlay: <span id="wlc-ov-val">0.4</span></label><input type="range" id="wlc-overlay" min="0" max="1" step="0.05" value="0.4" oninput="document.getElementById('wlc-ov-val').textContent=this.value;renderWelcomeCanvas()"></div>
-
-            <span class="section-badge" style="margin-top:.75rem">👤 Avatar</span>
-            <div class="ctrl-row">
-              <div class="input-group"><label>Forma</label>
-                <select id="wlc-avatar-shape" onchange="renderWelcomeCanvas()">
-                  <option value="circle">⭕ Círculo</option>
-                  <option value="rounded">▢ Redondeado</option>
-                  <option value="square">◻ Cuadrado</option>
-                </select>
-              </div>
-              <div class="input-group"><label>Color borde</label><input type="color" id="wlc-border-color" value="#00D9FF" oninput="renderWelcomeCanvas()"></div>
-            </div>
-            <div class="ctrl-row">
-              <div class="input-group"><label>Grosor borde: <span id="wlc-bw-val">4</span></label><input type="range" id="wlc-border-width" min="0" max="12" value="4" oninput="document.getElementById('wlc-bw-val').textContent=this.value;renderWelcomeCanvas()"></div>
-              <div class="input-group"><label>Estilo borde</label>
-                <select id="wlc-border-style" onchange="renderWelcomeCanvas()">
-                  <option value="solid">— Sólido</option>
-                  <option value="dashed">- - Punteado</option>
-                  <option value="dotted">··· Puntos</option>
-                </select>
-              </div>
-            </div>
-            <div class="input-group"><label>Posición X: <span id="wlc-ax-val">130</span></label><input type="range" id="wlc-avatar-x" min="50" max="400" value="130" oninput="document.getElementById('wlc-ax-val').textContent=this.value;renderWelcomeCanvas()"></div>
-            <div class="input-group"><label>Posición Y: <span id="wlc-ay-val">150</span></label><input type="range" id="wlc-avatar-y" min="50" max="250" value="150" oninput="document.getElementById('wlc-ay-val').textContent=this.value;renderWelcomeCanvas()"></div>
-            <div class="input-group"><label>Tamaño: <span id="wlc-ar-val">70</span></label><input type="range" id="wlc-avatar-r" min="30" max="130" value="70" oninput="document.getElementById('wlc-ar-val').textContent=this.value;renderWelcomeCanvas()"></div>
-
-            <span class="section-badge" style="margin-top:.75rem">✏️ Textos</span>
-            <div class="input-group"><label>Título</label><input type="text" id="wlc-title" value="¡Bienvenido!" oninput="renderWelcomeCanvas()"></div>
-            <div class="ctrl-row">
-              <div class="input-group"><label>Color título</label><input type="color" id="wlc-title-color" value="#00D9FF" oninput="renderWelcomeCanvas()"></div>
-              <div class="input-group"><label>Tamaño título: <span id="wlc-ts-val">28</span></label><input type="range" id="wlc-title-size" min="14" max="48" value="28" oninput="document.getElementById('wlc-ts-val').textContent=this.value;renderWelcomeCanvas()"></div>
-            </div>
-            <div class="ctrl-row">
-              <div class="input-group"><label>Color nombre</label><input type="color" id="wlc-name-color" value="#FFFFFF" oninput="renderWelcomeCanvas()"></div>
-              <div class="input-group"><label>Tamaño nombre: <span id="wlc-ns-val">20</span></label><input type="range" id="wlc-name-size" min="10" max="36" value="20" oninput="document.getElementById('wlc-ns-val').textContent=this.value;renderWelcomeCanvas()"></div>
-            </div>
-            <div class="ctrl-row">
-              <div class="input-group"><label>Color grupo</label><input type="color" id="wlc-group-color" value="#CCCCCC" oninput="renderWelcomeCanvas()"></div>
-              <div class="input-group"><label>Tamaño grupo: <span id="wlc-gs-val">16</span></label><input type="range" id="wlc-group-size" min="10" max="30" value="16" oninput="document.getElementById('wlc-gs-val').textContent=this.value;renderWelcomeCanvas()"></div>
-            </div>
-            <div class="input-group" style="flex-direction:row;align-items:center;gap:.75rem;margin-bottom:.75rem">
-              <input type="checkbox" id="wlc-text-shadow" checked onchange="renderWelcomeCanvas()" style="width:auto">
-              <label for="wlc-text-shadow" style="cursor:pointer">Sombra en textos</label>
-            </div>
-
-            <span class="section-badge" style="margin-top:.75rem">💬 Mensajes</span>
-            <div class="input-group"><label>Bienvenida</label><textarea id="wlc-caption" rows="3">👋 ¡Bienvenido @{numero} a *{grupo}*!
-Ya somos *{miembros}* miembros.</textarea><small>Variables: {numero}, {grupo}, {miembros}, {nombre}</small></div>
-            <div class="input-group"><label>Despedida</label><textarea id="wlc-caption-bye" rows="2">👋 @{numero} ha salido de *{grupo}*. ¡Hasta pronto!</textarea></div>
-
-            <button onclick="saveWelcome()" class="btn-primary" style="margin-top:.5rem">💾 Guardar Welcome</button>
+          <div class="sh-actions">
+            <button onclick="restartUserBot()" class="btn-sm btn-warn">🔄 Reiniciar</button>
+            <button onclick="confirmDeleteSession()" class="btn-sm btn-outline">🗑️ Sesión</button>
+            <button onclick="confirmDeleteBot()" class="btn-sm btn-danger">❌ Eliminar Bot</button>
+          </div>
+        </div>
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="sc-icon">👥</div>
+            <div class="sc-val" id="ov-groups">0</div>
+            <div class="sc-lbl">Grupos</div>
+          </div>
+          <div class="stat-card">
+            <div class="sc-icon">⏱️</div>
+            <div class="sc-val" id="ov-uptime">0h</div>
+            <div class="sc-lbl">Uptime</div>
+          </div>
+          <div class="stat-card">
+            <div class="sc-icon">🌐</div>
+            <div class="sc-val" id="ov-mode">—</div>
+            <div class="sc-lbl">Modo</div>
+          </div>
+          <div class="stat-card">
+            <div class="sc-icon">💰</div>
+            <div class="sc-val" id="ov-money">$0</div>
+            <div class="sc-lbl">Saldo</div>
           </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <section id="sec-antilink" class="sec">
-    <div class="sec-header"><h2>🛡️ Configuración Anti-Link</h2></div>
-    <div id="antilink-nobot" class="no-access" style="display:none">🔒 Necesitas un bot activo. <a href="/vincular" style="color:var(--accent)">Vincular Bot →</a></div>
-    <div id="antilink-main" style="display:none">
-      <div class="input-group" style="max-width:420px;margin-bottom:1.5rem">
-        <label>Seleccionar Grupo</label>
-        <select id="antilink-group-select" onchange="loadAntilinkConfig(this.value)">
-          <option value="">— Selecciona un grupo —</option>
-        </select>
+    <section id="sec-config" class="sec">
+      <div class="sec-header">
+        <h2>⚙️ Configuración del Bot</h2>
       </div>
-      <div id="antilink-editor" class="antilink-editor" style="display:none">
-        <form onsubmit="saveAntilinkConfig(event)">
+      <div id="config-nobot" class="no-access" style="display:none">🔒 Necesitas un bot activo. <a href="/vincular"
+          style="color:var(--accent)">Vincular Bot →</a></div>
+      <div id="config-main" style="display:none">
+        <form onsubmit="saveConfig(event)">
           <div class="form-grid">
-            <div class="input-group">
-              <label>Estado</label>
-              <select id="al-enabled"><option value="true">✅ Activado</option><option value="false">❌ Desactivado</option></select>
-            </div>
-            <div class="input-group">
-              <label>Modo</label>
-              <select id="al-mode">
-                <option value="all">Bloquear todos</option>
-                <option value="blocklist-only">Solo lista negra</option>
-                <option value="allowlist-only">Solo lista blanca</option>
-              </select>
-            </div>
-            <div class="input-group">
-              <label>Acción al detectar</label>
-              <select id="al-action">
-                <option value="delete">🗑️ Eliminar mensaje</option>
-                <option value="kick">👢 Expulsar</option>
-                <option value="mute">🔇 Silenciar</option>
-                <option value="warn-only">⚠️ Solo advertir</option>
-              </select>
-            </div>
-            <div class="input-group">
-              <label>Máximo de advertencias</label>
-              <input type="number" id="al-warn-count" min="1" max="10" value="3">
-            </div>
-            <div class="input-group">
-              <label>Eximir Admins</label>
-              <select id="al-exempt-admins"><option value="true">✅ Sí</option><option value="false">❌ No</option></select>
-            </div>
+            <div class="input-group"><label>Nombre del Bot</label><input type="text" id="cfg-name" maxlength="30"
+                placeholder="Mi Bot"></div>
+            <div class="input-group"><label>Modo</label><select id="cfg-mode">
+                <option value="public">🔓 Público</option>
+                <option value="private">🔐 Privado</option>
+              </select></div>
+            <div class="input-group"><label>Anti-Privado</label><select id="cfg-antipriv">
+                <option value="false">❌ Off</option>
+                <option value="true">✅ On</option>
+              </select></div>
+            <div class="input-group"><label>Anti-Spam</label><select id="cfg-antispam">
+                <option value="true">✅ On</option>
+                <option value="false">❌ Off</option>
+              </select></div>
+            <div class="input-group"><label>Cooldown (ms)</label><input type="number" id="cfg-cooldown" min="1000"
+                max="60000" step="500" value="3000"></div>
           </div>
-          <div class="input-group">
-            <label>Enlaces permitidos (separados por coma)</label>
-            <input type="text" id="al-allowed" placeholder="youtube.com, instagram.com">
-          </div>
-          <div class="input-group">
-            <label>Enlaces bloqueados (separados por coma)</label>
-            <input type="text" id="al-blocked" placeholder="whatsapp.com, telegram.me">
-          </div>
-          <button type="submit" class="btn-primary">💾 Guardar Anti-Link</button>
+          <button type="submit" class="btn-primary">💾 Guardar Cambios</button>
         </form>
-        <div id="antilink-message" style="margin-top:1rem"></div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <section id="sec-logos" class="sec">
-    <div class="sec-header"><h2>🖼️ Logos del Bot</h2></div>
-    <div id="logos-nobot" class="no-access" style="display:none">🔒 Necesitas un bot activo. <a href="/vincular" style="color:var(--accent)">Vincular Bot →</a></div>
-    <div id="logos-main" style="display:none">
-      <div class="logos-grid" id="logos-grid"></div>
-      <div class="presets-section">
-        <h3>🎨 Logos Predeterminados</h3>
-        <p style="color:var(--text-muted);font-size:.85rem;margin-bottom:1rem">Haz clic en uno para aplicarlo a una zona</p>
-        <div class="presets-grid" id="presets-grid"></div>
+    <section id="sec-groups-list" class="sec">
+      <div class="sec-header">
+        <h2>👥 Mis Grupos</h2>
       </div>
-    </div>
-  </section>
+      <div id="groups-list-nobot" class="no-access" style="display:none">🔒 Necesitas un bot activo.</div>
+      <div id="groups-list-main" style="display:none">
+        <div class="groups-grid" id="groups-grid"></div>
+      </div>
+    </section>
 
-  <section id="sec-downloads" class="sec">
-    <div class="sec-header"><h2>⬇️ Descargas Multimedia</h2></div>
-    <div class="download-card">
-      <div class="input-group"><label>URL del contenido</label><input type="url" id="dl-url" placeholder="https://youtube.com/watch?v=...  |  https://tiktok.com/..."></div>
-      <div class="form-grid">
-        <div class="input-group"><label>Tipo de descarga</label>
-          <select id="dl-type">
-            <option value="video">🎬 Video</option>
-            <option value="audio">🎵 Audio (mp3)</option>
-            <option value="document_video">📄 Video como documento</option>
-            <option value="document_audio">📄 Audio como documento</option>
+    <section id="sec-welcome" class="sec">
+      <div class="sec-header">
+        <h2>👋 Configurar Welcome</h2>
+      </div>
+      <div id="welcome-nobot" class="no-access" style="display:none">🔒 Necesitas un bot activo.</div>
+      <div id="welcome-main" style="display:none">
+        <div class="input-group" style="max-width:420px;margin-bottom:1.5rem">
+          <label>Seleccionar Grupo</label>
+          <select id="wlc-group-select" onchange="loadWelcomeForGroup(this.value)">
+            <option value="">— Selecciona un grupo —</option>
           </select>
         </div>
-      </div>
-      <button onclick="startDownload()" class="btn-primary">⬇️ Descargar</button>
-      <div id="dl-result" style="display:none;margin-top:1rem;padding:1rem;background:var(--bg-ter);border-radius:var(--radius);border:1px solid var(--border)"></div>
-    </div>
-  </section>
+        <div id="wlc-editor" style="display:none">
+          <div class="wlc-layout">
+            <div>
+              <span class="section-badge">Vista previa</span>
+              <div class="wlc-canvas-wrap">
+                <canvas id="wlc-canvas" width="600" height="300"></canvas>
+              </div>
+              <div style="display:flex;gap:.5rem;margin-top:.6rem">
+                <button onclick="renderWelcomeCanvas()" class="btn-sm btn-outline">🔄 Actualizar</button>
+                <button onclick="downloadWelcomePreview()" class="btn-sm btn-outline">📥 Descargar</button>
+              </div>
+            </div>
+            <div class="wlc-ctrl-scroll">
+              <span class="section-badge">🎨 Fondo</span>
+              <div class="ctrl-row">
+                <div class="input-group"><label>Color 1</label><input type="color" id="wlc-bg1" value="#0B0F19"
+                    oninput="renderWelcomeCanvas()"></div>
+                <div class="input-group"><label>Color 2</label><input type="color" id="wlc-bg2" value="#1a1a3e"
+                    oninput="renderWelcomeCanvas()"></div>
+              </div>
+              <div class="input-group"><label>Imagen de fondo (URL)</label><input type="url" id="wlc-bg-url"
+                  placeholder="https://..." oninput="renderWelcomeCanvas()"></div>
+              <div class="input-group"><label>Opacidad overlay: <span id="wlc-ov-val">0.4</span></label><input
+                  type="range" id="wlc-overlay" min="0" max="1" step="0.05" value="0.4"
+                  oninput="document.getElementById('wlc-ov-val').textContent=this.value;renderWelcomeCanvas()"></div>
 
-  <section id="sec-chat" class="sec">
-    <div class="sec-header">
-      <h2>🤖 Chat de Comandos</h2>
-    </div>
-    <p style="color:var(--text-muted);font-size:.85rem;margin-bottom:1rem">Este chat solo acepta comandos del bot. Escribe <code>.menu</code> para ver la lista.</p>
-    <div id="cmd-grid" class="cmd-grid"></div>
-    <div class="chat-container">
-      <div class="chat-messages" id="chat-messages">
-        <div class="chat-msg bot-msg">
-          <div class="msg-bubble">¡Hola! 👋 Este chat solo es para ejecutar comandos. Escribe <strong>.menu</strong> para ver la lista.</div>
-        </div>
-      </div>
-      <div class="chat-input-row">
-        <input type="text" id="chat-input" placeholder="Escribe un comando (ej: .menu)..." onkeypress="if(event.key==='Enter')sendChatMsg()">
-        <button onclick="sendChatMsg()" class="btn-primary">Enviar</button>
-      </div>
-    </div>
-  </section>
+              <span class="section-badge" style="margin-top:.75rem">👤 Avatar</span>
+              <div class="ctrl-row">
+                <div class="input-group"><label>Forma</label>
+                  <select id="wlc-avatar-shape" onchange="renderWelcomeCanvas()">
+                    <option value="circle">⭕ Círculo</option>
+                    <option value="rounded">▢ Redondeado</option>
+                    <option value="square">◻ Cuadrado</option>
+                  </select>
+                </div>
+                <div class="input-group"><label>Color borde</label><input type="color" id="wlc-border-color"
+                    value="#00D9FF" oninput="renderWelcomeCanvas()"></div>
+              </div>
+              <div class="ctrl-row">
+                <div class="input-group"><label>Grosor borde: <span id="wlc-bw-val">4</span></label><input type="range"
+                    id="wlc-border-width" min="0" max="12" value="4"
+                    oninput="document.getElementById('wlc-bw-val').textContent=this.value;renderWelcomeCanvas()"></div>
+                <div class="input-group"><label>Estilo borde</label>
+                  <select id="wlc-border-style" onchange="renderWelcomeCanvas()">
+                    <option value="solid">— Sólido</option>
+                    <option value="dashed">- - Punteado</option>
+                    <option value="dotted">··· Puntos</option>
+                  </select>
+                </div>
+              </div>
+              <div class="input-group"><label>Posición X: <span id="wlc-ax-val">130</span></label><input type="range"
+                  id="wlc-avatar-x" min="50" max="400" value="130"
+                  oninput="document.getElementById('wlc-ax-val').textContent=this.value;renderWelcomeCanvas()"></div>
+              <div class="input-group"><label>Posición Y: <span id="wlc-ay-val">150</span></label><input type="range"
+                  id="wlc-avatar-y" min="50" max="250" value="150"
+                  oninput="document.getElementById('wlc-ay-val').textContent=this.value;renderWelcomeCanvas()"></div>
+              <div class="input-group"><label>Tamaño: <span id="wlc-ar-val">70</span></label><input type="range"
+                  id="wlc-avatar-r" min="30" max="130" value="70"
+                  oninput="document.getElementById('wlc-ar-val').textContent=this.value;renderWelcomeCanvas()"></div>
 
-  <section id="sec-profile" class="sec">
-    <div class="sec-header"><h2>👤 Mi Perfil</h2></div>
-    <div class="profile-card">
-      <div class="profile-avatar-wrap">
-        <div class="profile-avatar" id="profile-avatar-el">👤</div>
-      </div>
-      <div class="profile-details">
-        <h3 id="prf-display">—</h3>
-        <p style="color:var(--text-muted);font-size:.82rem" id="prf-username">—</p>
-        <p id="prf-phone">📱 —</p>
-        <p id="prf-role">🔰 —</p>
-        <p id="prf-money">💰 $0</p>
-        <p id="prf-bio" class="bio-text">Sin biografía</p>
-      </div>
-    </div>
+              <span class="section-badge" style="margin-top:.75rem">✏️ Textos</span>
+              <div class="input-group"><label>Título</label><input type="text" id="wlc-title" value="¡Bienvenido!"
+                  oninput="renderWelcomeCanvas()"></div>
+              <div class="ctrl-row">
+                <div class="input-group"><label>Color título</label><input type="color" id="wlc-title-color"
+                    value="#00D9FF" oninput="renderWelcomeCanvas()"></div>
+                <div class="input-group"><label>Tamaño título: <span id="wlc-ts-val">28</span></label><input
+                    type="range" id="wlc-title-size" min="14" max="48" value="28"
+                    oninput="document.getElementById('wlc-ts-val').textContent=this.value;renderWelcomeCanvas()"></div>
+              </div>
+              <div class="ctrl-row">
+                <div class="input-group"><label>Color nombre</label><input type="color" id="wlc-name-color"
+                    value="#FFFFFF" oninput="renderWelcomeCanvas()"></div>
+                <div class="input-group"><label>Tamaño nombre: <span id="wlc-ns-val">20</span></label><input
+                    type="range" id="wlc-name-size" min="10" max="36" value="20"
+                    oninput="document.getElementById('wlc-ns-val').textContent=this.value;renderWelcomeCanvas()"></div>
+              </div>
+              <div class="ctrl-row">
+                <div class="input-group"><label>Color grupo</label><input type="color" id="wlc-group-color"
+                    value="#CCCCCC" oninput="renderWelcomeCanvas()"></div>
+                <div class="input-group"><label>Tamaño grupo: <span id="wlc-gs-val">16</span></label><input type="range"
+                    id="wlc-group-size" min="10" max="30" value="16"
+                    oninput="document.getElementById('wlc-gs-val').textContent=this.value;renderWelcomeCanvas()"></div>
+              </div>
+              <div class="input-group" style="flex-direction:row;align-items:center;gap:.75rem;margin-bottom:.75rem">
+                <input type="checkbox" id="wlc-text-shadow" checked onchange="renderWelcomeCanvas()" style="width:auto">
+                <label for="wlc-text-shadow" style="cursor:pointer">Sombra en textos</label>
+              </div>
 
-    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;max-width:560px;margin-top:1.5rem">
-      <h3 style="margin-bottom:1rem">✏️ Editar Perfil</h3>
-      <div class="form-grid">
-        <div class="input-group"><label>Nombre de Pantalla</label><input type="text" id="edit-display-name" placeholder="Tu nombre" maxlength="40"></div>
-        <div class="input-group"><label>URL de Foto de Perfil</label><input type="url" id="edit-avatar" placeholder="https://..."></div>
-      </div>
-      <div class="input-group"><label>Biografía</label><textarea id="edit-bio" rows="3" placeholder="Cuéntanos algo sobre ti..."></textarea></div>
-      <button onclick="updateProfile()" class="btn-primary">💾 Guardar Cambios</button>
-    </div>
+              <span class="section-badge" style="margin-top:.75rem">💬 Mensajes</span>
+              <div class="input-group"><label>Bienvenida</label><textarea id="wlc-caption" rows="3">👋 ¡Bienvenido @{numero} a *{grupo}*!
+Ya somos *{miembros}* miembros.</textarea><small>Variables: {numero}, {grupo}, {miembros}, {nombre}</small></div>
+              <div class="input-group"><label>Despedida</label><textarea id="wlc-caption-bye"
+                  rows="2">👋 @{numero} ha salido de *{grupo}*. ¡Hasta pronto!</textarea></div>
 
-    <div class="email-section" style="max-width:500px;margin-top:1.5rem">
-      <h3>📧 Correo Electrónico</h3>
-      <div id="prf-email-status"></div>
-      <div id="email-verified-msg" class="success-msg" style="display:none">✅ Correo verificado correctamente</div>
-      <div id="email-form-wrap">
-        <div class="input-group" style="margin-top:.75rem">
-          <label>Correo electrónico</label>
-          <input type="email" id="prf-email-input" placeholder="tu@correo.com">
-        </div>
-        <div style="display:flex;gap:.5rem">
-          <button onclick="sendEmailCode()" class="btn-outline" id="send-code-btn">📨 Enviar Código</button>
-          <button onclick="removeEmail()" class="btn-sm btn-danger">🗑️ Quitar correo</button>
-        </div>
-        <div id="email-code-wrap" style="display:none;margin-top:.75rem">
-          <div class="input-group">
-            <label>Código de verificación (6 dígitos)</label>
-            <input type="text" id="prf-email-code" placeholder="123456" maxlength="6">
+              <button onclick="saveWelcome()" class="btn-primary" style="margin-top:.5rem">💾 Guardar Welcome</button>
+            </div>
           </div>
-          <button onclick="verifyEmailCode()" class="btn-primary">✅ Verificar Correo</button>
         </div>
       </div>
-    </div>
+    </section>
 
-    <div style="background:rgba(255,71,87,.05);border:1px solid rgba(255,71,87,.2);border-radius:var(--radius-lg);padding:1.5rem;max-width:500px;margin-top:1.5rem">
-      <h3 style="color:var(--danger);margin-bottom:.5rem">⚠️ Zona de Peligro</h3>
-      <p style="color:var(--text-muted);font-size:.88rem;margin-bottom:1rem">Esta acción es permanente e irreversible. Se eliminará tu cuenta, bot vinculado y todos tus datos.</p>
-      <button onclick="confirmDeleteAccount()" class="btn-danger">🗑️ Eliminar mi cuenta permanentemente</button>
-    </div>
-  </section>
-</main>
+    <section id="sec-antilink" class="sec">
+      <div class="sec-header">
+        <h2>🛡️ Configuración Anti-Link</h2>
+      </div>
+      <div id="antilink-nobot" class="no-access" style="display:none">🔒 Necesitas un bot activo.</div>
+      <div id="antilink-main" style="display:none">
+        <div class="input-group" style="max-width:420px;margin-bottom:1.5rem">
+          <label>Seleccionar Grupo</label>
+          <select id="antilink-group-select" onchange="loadAntilinkConfig(this.value)">
+            <option value="">— Selecciona un grupo —</option>
+          </select>
+        </div>
+        <div id="antilink-editor" class="antilink-editor" style="display:none">
+          <form onsubmit="saveAntilinkConfig(event)">
+            <div class="form-grid">
+              <div class="input-group">
+                <label>Estado</label>
+                <select id="al-enabled">
+                  <option value="true">✅ Activado</option>
+                  <option value="false">❌ Desactivado</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label>Modo</label>
+                <select id="al-mode">
+                  <option value="all">Bloquear todos</option>
+                  <option value="blocklist-only">Solo lista negra</option>
+                  <option value="allowlist-only">Solo lista blanca</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label>Acción al detectar</label>
+                <select id="al-action">
+                  <option value="delete">🗑️ Eliminar mensaje</option>
+                  <option value="kick">👢 Expulsar</option>
+                  <option value="mute">🔇 Silenciar</option>
+                  <option value="warn-only">⚠️ Solo advertir</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label>Máximo de advertencias</label>
+                <input type="number" id="al-warn-count" min="1" max="10" value="3">
+              </div>
+              <div class="input-group">
+                <label>Eximir Admins</label>
+                <select id="al-exempt-admins">
+                  <option value="true">✅ Sí</option>
+                  <option value="false">❌ No</option>
+                </select>
+              </div>
+            </div>
+            <div class="input-group">
+              <label>Enlaces permitidos (separados por coma)</label>
+              <input type="text" id="al-allowed" placeholder="youtube.com, instagram.com">
+            </div>
+            <div class="input-group">
+              <label>Enlaces bloqueados (separados por coma)</label>
+              <input type="text" id="al-blocked" placeholder="whatsapp.com, telegram.me">
+            </div>
+            <button type="submit" class="btn-primary">💾 Guardar Anti-Link</button>
+          </form>
+          <div id="antilink-message" style="margin-top:1rem"></div>
+        </div>
+      </div>
+    </section>
 
-<div class="modal" id="group-modal">
-  <div class="modal-box">
-    <button class="modal-close" onclick="closeModal('group-modal')">✕</button>
-    <h2 id="gm-name">Grupo</h2>
-    <div id="gm-info"></div>
-    <div class="modal-actions">
-      <button onclick="leaveGroup()" class="btn-danger">🚪 Salir del Grupo</button>
-      <button onclick="goToGroupWelcome()" class="btn-primary">👋 Configurar Welcome</button>
+    <section id="sec-logos" class="sec">
+      <div class="sec-header">
+        <h2>🖼️ Logos del Bot</h2>
+      </div>
+      <div id="logos-nobot" class="no-access" style="display:none">🔒 Necesitas un bot activo.</div>
+      <div id="logos-main" style="display:none">
+        <div class="logos-grid" id="logos-grid"></div>
+        <div class="presets-section">
+          <h3>🎨 Logos Predeterminados</h3>
+          <p style="color:var(--text-muted);font-size:.85rem;margin-bottom:1rem">Haz clic en uno para aplicarlo a una
+            zona</p>
+          <div class="presets-grid" id="presets-grid"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-downloads" class="sec">
+      <div class="sec-header">
+        <h2>⬇️ Descargas Multimedia</h2>
+      </div>
+      <div class="download-card">
+        <div class="input-group"><label>URL del contenido</label><input type="url" id="dl-url"
+            placeholder="https://youtube.com/watch?v=..."></div>
+        <div class="form-grid">
+          <div class="input-group"><label>Tipo de descarga</label>
+            <select id="dl-type">
+              <option value="video">🎬 Video</option>
+              <option value="audio">🎵 Audio (mp3)</option>
+              <option value="document_video">📄 Video como documento</option>
+              <option value="document_audio">📄 Audio como documento</option>
+            </select>
+          </div>
+        </div>
+        <button onclick="startDownload()" class="btn-primary">⬇️ Descargar</button>
+        <div id="dl-result"
+          style="display:none;margin-top:1rem;padding:1rem;background:var(--bg-ter);border-radius:var(--radius);border:1px solid var(--border)">
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-chat" class="sec">
+      <div class="sec-header">
+        <h2>🤖 Chat de Comandos</h2>
+      </div>
+      <p style="color:var(--text-muted);font-size:.85rem;margin-bottom:1rem">Este chat solo acepta comandos del bot.
+        Escribe <code>.menu</code> para ver la lista.</p>
+      <div id="cmd-grid" class="cmd-grid"></div>
+      <div class="chat-container">
+        <div class="chat-messages" id="chat-messages">
+          <div class="chat-msg bot-msg">
+            <div class="msg-bubble">¡Hola! 👋 Este chat solo es para ejecutar comandos. Escribe <strong>.menu</strong>
+              para ver la lista.</div>
+          </div>
+        </div>
+        <div class="chat-input-row">
+          <input type="text" id="chat-input" placeholder="Escribe un comando (ej: .menu)..."
+            onkeypress="if(event.key==='Enter')sendChatMsg()">
+          <button onclick="sendChatMsg()" class="btn-primary">Enviar</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="sec-profile" class="sec">
+      <div class="sec-header">
+        <h2>👤 Mi Perfil</h2>
+      </div>
+      <div class="profile-card">
+        <div class="profile-avatar-wrap">
+          <div class="profile-avatar" id="profile-avatar-el">👤</div>
+        </div>
+        <div class="profile-details">
+          <h3 id="prf-display">—</h3>
+          <p style="color:var(--text-muted);font-size:.82rem" id="prf-username">—</p>
+          <p id="prf-phone">📱 —</p>
+          <p id="prf-role">🔰 —</p>
+          <p id="prf-money">💰 $0</p>
+          <p id="prf-bio" class="bio-text">Sin biografía</p>
+        </div>
+      </div>
+
+      <div
+        style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;max-width:560px;margin-top:1.5rem">
+        <h3 style="margin-bottom:1rem">✏️ Editar Perfil</h3>
+        <div class="form-grid">
+          <div class="input-group"><label>Nombre de Pantalla</label><input type="text" id="edit-display-name"
+              placeholder="Tu nombre" maxlength="40"></div>
+          <div class="input-group"><label>URL de Foto de Perfil</label><input type="url" id="edit-avatar"
+              placeholder="https://..."></div>
+        </div>
+        <div class="input-group"><label>Biografía</label><textarea id="edit-bio" rows="3"
+            placeholder="Cuéntanos algo sobre ti..."></textarea></div>
+        <button onclick="updateProfile()" class="btn-primary">💾 Guardar Cambios</button>
+      </div>
+
+      <div
+        style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;max-width:560px;margin-top:1rem">
+        <h3 style="margin-bottom:1rem">🔒 Seguridad</h3>
+        <button onclick="changePassword()" class="btn-outline">🔑 Cambiar Contraseña</button>
+      </div>
+
+      <div class="email-section" style="max-width:500px;margin-top:1.5rem">
+        <h3>📧 Correo Electrónico</h3>
+        <div id="prf-email-status"></div>
+        <div id="email-verified-msg" class="success-msg" style="display:none">✅ Correo verificado correctamente</div>
+        <div id="email-form-wrap">
+          <div class="input-group" style="margin-top:.75rem">
+            <label>Correo electrónico</label>
+            <input type="email" id="prf-email-input" placeholder="tu@correo.com">
+          </div>
+          <div style="display:flex;gap:.5rem">
+            <button onclick="sendEmailCode()" class="btn-outline" id="send-code-btn">📨 Enviar Código</button>
+            <button onclick="removeEmail()" class="btn-sm btn-danger">🗑️ Quitar correo</button>
+          </div>
+          <div id="email-code-wrap" style="display:none;margin-top:.75rem">
+            <div class="input-group">
+              <label>Código de verificación (6 dígitos)</label>
+              <input type="text" id="prf-email-code" placeholder="123456" maxlength="6">
+            </div>
+            <button onclick="verifyEmailCode()" class="btn-primary">✅ Verificar Correo</button>
+          </div>
+        </div>
+      </div>
+
+      <div
+        style="background:rgba(255,71,87,.05);border:1px solid rgba(255,71,87,.2);border-radius:var(--radius-lg);padding:1.5rem;max-width:500px;margin-top:1.5rem">
+        <h3 style="color:var(--danger);margin-bottom:.5rem">⚠️ Zona de Peligro</h3>
+        <p style="color:var(--text-muted);font-size:.88rem;margin-bottom:1rem">Esta acción es permanente e irreversible.
+        </p>
+        <button onclick="confirmDeleteAccount()" class="btn-danger">🗑️ Eliminar mi cuenta permanentemente</button>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal" id="group-modal">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeModal('group-modal')">✕</button>
+      <h2 id="gm-name">Grupo</h2>
+      <div id="gm-info"></div>
+      <div class="modal-actions">
+        <button onclick="leaveGroup()" class="btn-danger">🚪 Salir del Grupo</button>
+        <button onclick="goToGroupWelcome()" class="btn-primary">👋 Configurar Welcome</button>
+      </div>
     </div>
   </div>
-</div>
 
-<div class="modal" id="confirm-modal">
-  <div class="modal-box small">
-    <h3 id="confirm-title">¿Confirmar?</h3>
-    <p id="confirm-msg" style="color:var(--text-muted);margin:.75rem 0"></p>
-    <div class="modal-actions">
-      <button onclick="closeModal('confirm-modal')" class="btn-outline">Cancelar</button>
-      <button id="confirm-ok" class="btn-danger">Confirmar</button>
+  <div class="modal" id="confirm-modal">
+    <div class="modal-box small">
+      <h3 id="confirm-title">¿Confirmar?</h3>
+      <p id="confirm-msg" style="color:var(--text-muted);margin:.75rem 0"></p>
+      <div class="modal-actions">
+        <button onclick="closeModal('confirm-modal')" class="btn-outline">Cancelar</button>
+        <button id="confirm-ok" class="btn-danger">Confirmar</button>
+      </div>
     </div>
   </div>
-</div>
 
-<div class="toast" id="toast"></div>
-<script src="js/dashboard.js"></script>
+  <div class="toast" id="toast"></div>
+  <script src="js/dashboard.js"></script>
 </body>
+
 </html>

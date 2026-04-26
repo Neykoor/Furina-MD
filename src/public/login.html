@@ -1,110 +1,178 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Asta Bot</title>
-    <link rel="stylesheet" href="css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login – Asta Bot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
 </head>
+<body class="auth-body">
 
-<body class="auth-page">
-    <div class="auth-container">
-        <div class="auth-card">
-            <div class="auth-header">
-                <img id="logo-img" src="" alt="Asta" class="auth-logo">
-                <h2 id="auth-title">Iniciar Sesión</h2>
-                <p id="auth-subtitle">Accede a tu panel de control</p>
-            </div>
+<div class="auth-bg">
+  <div class="auth-grid"></div>
+</div>
 
-            <!-- Auth Method Toggle -->
-            <div class="auth-method-toggle">
-                <button class="method-btn active" onclick="switchAuthMethod('credentials')" id="btn-credentials">
-                    🔐 Usuario y Contraseña
-                </button>
-                <button class="method-btn" onclick="switchAuthMethod('token')" id="btn-token">
-                    🎫 Token ASTA
-                </button>
-            </div>
-
-            <!-- Login with Credentials -->
-            <form id="login-form" class="auth-form active" onsubmit="handleLogin(event)">
-                <div class="input-group">
-                    <label>Número / Usuario / Correo</label>
-                    <input type="text" id="login-user" placeholder="521234567890 o correo@ejemplo.com" required>
-                </div>
-                <div class="input-group">
-                    <label>Contraseña</label>
-                    <input type="password" id="login-pass" placeholder="••••••••" required>
-                </div>
-                <button type="submit" class="btn-glow btn-full">Entrar</button>
-                <p class="auth-switch">
-                    ¿No tienes cuenta? <a href="#" onclick="showForm('register')">Regístrate con Token</a>
-                </p>
-            </form>
-
-            <!-- Login with Token -->
-            <form id="token-form" class="auth-form" onsubmit="handleTokenLogin(event)">
-                <div class="input-group">
-                    <label>Token de Acceso</label>
-                    <input type="text" id="token-input" placeholder="ASTA-XXXXX" required 
-                           style="text-transform: uppercase; letter-spacing: 2px; font-family: monospace;">
-                    <small>Ingresa tu token ASTA de 5 dígitos</small>
-                </div>
-                <button type="submit" class="btn-glow btn-full">Verificar Token</button>
-                <p class="auth-switch">
-                    ¿No tienes token? Pide uno con <code>#token</code> en WhatsApp
-                </p>
-            </form>
-
-            <!-- Register Form -->
-            <form id="register-form" class="auth-form" onsubmit="handleRegister(event)">
-                <div class="input-group">
-                    <label>Token de Registro</label>
-                    <input type="text" id="reg-token" placeholder="ASTA-XXXXX" required
-                           style="text-transform: uppercase; letter-spacing: 2px; font-family: monospace;">
-                    <small>Obtén uno con el comando <code>#token</code> en WhatsApp</small>
-                </div>
-                <div class="input-group">
-                    <label>Número / Usuario</label>
-                    <input type="text" id="reg-user" placeholder="521234567890" required>
-                </div>
-                <div class="input-group">
-                    <label>Correo Electrónico (Opcional)</label>
-                    <input type="email" id="reg-email" placeholder="correo@ejemplo.com">
-                    <button type="button" class="btn-outline btn-small" onclick="sendEmailCode()" id="btn-send-code">
-                        📧 Enviar Código de Verificación
-                    </button>
-                </div>
-                <div class="input-group" id="email-code-group" style="display:none;">
-                    <label>Código de Verificación</label>
-                    <input type="text" id="reg-email-code" placeholder="123456" maxlength="6">
-                    <button type="button" class="btn-outline btn-small" onclick="verifyEmailCode()">
-                        ✅ Verificar
-                    </button>
-                </div>
-                <div class="input-group">
-                    <label>Contraseña</label>
-                    <input type="password" id="reg-pass" placeholder="••••••••" required minlength="6">
-                    <small>Mínimo 6 caracteres</small>
-                </div>
-                <div class="input-group">
-                    <label>Confirmar Contraseña</label>
-                    <input type="password" id="reg-pass-confirm" placeholder="••••••••" required>
-                </div>
-                <button type="submit" class="btn-glow btn-full">Crear Cuenta</button>
-                <p class="auth-switch">
-                    ¿Ya tienes cuenta? <a href="#" onclick="showForm('login')">Inicia Sesión</a>
-                </p>
-            </form>
-
-            <div id="auth-error" class="auth-error"></div>
-            <div id="auth-success" class="auth-success"></div>
-        </div>
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-header">
+      <img id="auth-logo" src="" onerror="this.style.display='none'" class="auth-logo">
+      <h1 class="auth-title">Asta Bot</h1>
+      <p class="auth-sub" id="auth-subtitle">Panel de Control</p>
     </div>
 
-    <script src="js/auth.js"></script>
-</body>
+    <!-- Method switcher -->
+    <div class="method-switch">
+      <button class="method-btn active" id="method-token-btn" onclick="switchMethod('token')">
+        🔑 Usar Token
+      </button>
+      <button class="method-btn" id="method-creds-btn" onclick="switchMethod('creds')">
+        👤 Usuario & Contraseña
+      </button>
+    </div>
 
+    <!-- ── TOKEN METHOD ── -->
+    <div id="token-method" class="method-panel">
+      <!-- Register with token -->
+      <div id="token-register-panel" class="sub-panel active">
+        <p class="panel-desc">Ingresa tu token <strong>ASTA-XXXXX</strong> para registrarte</p>
+        <div class="input-group">
+          <label>Token de Registro</label>
+          <input type="text" id="reg-token" placeholder="ASTA-AB3XY" maxlength="10" oninput="verifyTokenInput()" autocomplete="off">
+          <span class="field-status" id="token-status"></span>
+        </div>
+        <div id="token-register-form" style="display:none">
+          <div class="input-group">
+            <label>Número / Usuario</label>
+            <input type="text" id="tr-username" placeholder="521234567890">
+          </div>
+          <div class="input-group">
+            <label>Contraseña</label>
+            <input type="password" id="tr-password" placeholder="Mínimo 6 caracteres">
+          </div>
+        </div>
+        <button onclick="handleTokenRegister()" class="btn-primary btn-full" id="token-reg-btn" disabled>Registrarse</button>
+        <p style="text-align:center;margin-top:.75rem;font-size:.85rem;color:var(--text-muted)">
+          ¿Ya tienes cuenta? <a href="#" onclick="switchMethod('creds')">Inicia sesión</a>
+        </p>
+      </div>
+    </div>
+
+    <!-- ── CREDENTIALS METHOD ── -->
+    <div id="creds-method" class="method-panel" style="display:none">
+      <!-- Login -->
+      <div class="input-group">
+        <label>Número, correo o usuario</label>
+        <input type="text" id="login-username" placeholder="521234567890 o tu@correo.com">
+      </div>
+      <div class="input-group">
+        <label>Contraseña</label>
+        <input type="password" id="login-password" placeholder="••••••••">
+      </div>
+      <button onclick="handleLogin()" class="btn-primary btn-full">Entrar al Panel</button>
+      <p style="text-align:center;margin-top:.75rem;font-size:.85rem;color:var(--text-muted)">
+        ¿Primera vez? <a href="#" onclick="switchMethod('token')">Regístrate con token</a>
+      </p>
+    </div>
+
+    <div class="auth-error" id="auth-error"></div>
+  </div>
+</div>
+
+<script>
+const API = ''
+
+async function switchMethod(method) {
+  document.getElementById('token-method').style.display = method === 'token' ? 'block' : 'none'
+  document.getElementById('creds-method').style.display = method === 'creds' ? 'block' : 'none'
+  document.getElementById('method-token-btn').classList.toggle('active', method === 'token')
+  document.getElementById('method-creds-btn').classList.toggle('active', method === 'creds')
+  clearError()
+}
+
+async function verifyTokenInput() {
+  const val = document.getElementById('reg-token').value.trim().toUpperCase()
+  document.getElementById('reg-token').value = val
+  const statusEl = document.getElementById('token-status')
+  const regForm = document.getElementById('token-register-form')
+  const btn = document.getElementById('token-reg-btn')
+
+  if (!val.startsWith('ASTA-') || val.length < 10) {
+    statusEl.textContent = ''
+    statusEl.className = 'field-status'
+    regForm.style.display = 'none'
+    btn.disabled = true
+    return
+  }
+  statusEl.textContent = '⏳ Verificando...'
+  statusEl.className = 'field-status checking'
+  try {
+    const r = await fetch(`/api/tokens/verify/${val}`)
+    const d = await r.json()
+    if (d.valid) {
+      statusEl.textContent = '✅ Token válido'
+      statusEl.className = 'field-status valid'
+      regForm.style.display = 'block'
+      btn.disabled = false
+    } else {
+      statusEl.textContent = '❌ ' + d.error
+      statusEl.className = 'field-status invalid'
+      regForm.style.display = 'none'
+      btn.disabled = true
+    }
+  } catch {
+    statusEl.textContent = '⚠️ Error de conexión'
+    statusEl.className = 'field-status invalid'
+  }
+}
+
+async function handleTokenRegister() {
+  const token = document.getElementById('reg-token').value.trim()
+  const username = document.getElementById('tr-username').value.trim()
+  const password = document.getElementById('tr-password').value
+  if (!username) return showError('Ingresa un número o usuario')
+  if (password.length < 6) return showError('Contraseña mínimo 6 caracteres')
+  try {
+    const r = await fetch('/api/auth/register', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ username, password, token }) })
+    const d = await r.json()
+    if (d.success) { localStorage.setItem('token', d.token); localStorage.setItem('role', d.role); redirect(d.role) }
+    else showError(d.error)
+  } catch { showError('Error de conexión') }
+}
+
+async function handleLogin() {
+  const username = document.getElementById('login-username').value.trim()
+  const password = document.getElementById('login-password').value
+  if (!username || !password) return showError('Completa todos los campos')
+  try {
+    const r = await fetch('/api/auth/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ username, password }) })
+    const d = await r.json()
+    if (d.success) { localStorage.setItem('token', d.token); localStorage.setItem('role', d.role); redirect(d.role) }
+    else showError(d.error)
+  } catch { showError('Error de conexión') }
+}
+
+function redirect(role) {
+  window.location.href = (role === 'owner' || role === 'admin') ? '/admin' : '/dashboard'
+}
+function showError(msg) {
+  const el = document.getElementById('auth-error')
+  el.textContent = '❌ ' + msg
+  el.style.display = 'block'
+  setTimeout(() => { el.style.display = 'none' }, 5000)
+}
+function clearError() { document.getElementById('auth-error').style.display = 'none' }
+
+// Auto-redirect
+const tk = localStorage.getItem('token')
+if (tk) fetch('/api/auth/me', { headers: {'Authorization':'Bearer ' + tk} }).then(r=>r.json()).then(d=>{ if(d.success) redirect(d.user.role) }).catch(()=>{})
+
+// Load logo
+fetch('/api/info').then(r=>r.json()).then(d=>{ if(d.logo) document.getElementById('auth-logo').src = d.logo }).catch(()=>{})
+
+// Enter key support
+document.addEventListener('keypress', e => { if (e.key === 'Enter') { const cr = document.getElementById('creds-method'); if (cr.style.display !== 'none') handleLogin() } })
+</script>
+</body>
 </html>

@@ -1,354 +1,240 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - Asta Bot</title>
-    <link rel="stylesheet" href="css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin – Asta Bot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
 </head>
+<body class="dashboard-body">
 
-<body class="dashboard">
-    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sb-brand">
+    <img id="sidebar-logo" src="" onerror="this.style.display='none'" class="sb-logo">
+    <span class="sb-title">Asta Admin</span>
+  </div>
+  <nav class="sb-nav">
+    <button class="nav-btn active" onclick="showAdminSection('overview',this)"><span class="nav-icon">📊</span><span>Resumen</span></button>
+    <button class="nav-btn" onclick="showAdminSection('bots',this)"><span class="nav-icon">🤖</span><span>Bots</span></button>
+    <button class="nav-btn" onclick="showAdminSection('users',this)"><span class="nav-icon">👥</span><span>Usuarios</span></button>
+    <button class="nav-btn" onclick="showAdminSection('tokens',this)"><span class="nav-icon">🔑</span><span>Tokens</span></button>
+    <button class="nav-btn" onclick="showAdminSection('console',this)"><span class="nav-icon">💻</span><span>Consola</span></button>
+    <button class="nav-btn" onclick="showAdminSection('ai',this)"><span class="nav-icon">🧠</span><span>IA Admin</span></button>
+    <button class="nav-btn" onclick="showAdminSection('welcome',this)"><span class="nav-icon">👋</span><span>Welcome</span></button>
+  </nav>
+  <div class="sb-footer">
+    <span class="role-pill owner">OWNER</span>
+    <button onclick="logout()" class="btn-logout" style="margin-top:.5rem">🚪 Salir</button>
+  </div>
+</aside>
 
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-brand">
-            <img id="sidebar-logo" src="" class="sidebar-logo">
-            <span>Asta Bot Admin</span>
-        </div>
-        <nav class="sidebar-nav">
-            <a href="#overview" class="nav-item active" onclick="showAdminSection('overview')">📊 Resumen</a>
-            <a href="#bots" class="nav-item" onclick="showAdminSection('bots')">🤖 Bots</a>
-            <a href="#users" class="nav-item" onclick="showAdminSection('users')">👥 Usuarios</a>
-            <a href="#console" class="nav-item" onclick="showAdminSection('console')">💻 Consola</a>
-            <a href="#ai" class="nav-item" onclick="showAdminSection('ai')">🧠 IA Admin</a>
-            <a href="#welcome-designer" class="nav-item" onclick="showAdminSection('welcome-designer')">🎨 Welcome</a>
-        </nav>
-        <div class="sidebar-footer">
-            <button onclick="logout()" class="btn-danger">🚪 Cerrar Sesión</button>
-        </div>
-    </aside>
+<div class="sidebar-overlay" id="sb-overlay" onclick="closeSidebar()"></div>
 
-    <main class="main-content">
-        <header class="dashboard-header">
-            <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
-            <h1>Panel Administrativo</h1>
-            <div class="user-badge owner" id="user-role">OWNER</div>
-        </header>
-
-        <!-- Overview -->
-        <section id="admin-overview" class="section active">
-            <h2 class="section-title">📊 Estadísticas del Sistema</h2>
-            <div class="stats-dashboard">
-                <div class="stat-card large">
-                    <span class="stat-icon">🤖</span>
-                    <span class="stat-value" id="admin-total-bots">0</span>
-                    <span class="stat-label">Total Bots</span>
-                </div>
-                <div class="stat-card large">
-                    <span class="stat-icon">🟢</span>
-                    <span class="stat-value" id="admin-connected">0</span>
-                    <span class="stat-label">Conectados</span>
-                </div>
-                <div class="stat-card large">
-                    <span class="stat-icon">👤</span>
-                    <span class="stat-value" id="admin-total-users">0</span>
-                    <span class="stat-label">Usuarios Web</span>
-                </div>
-                <div class="stat-card large">
-                    <span class="stat-icon">💾</span>
-                    <span class="stat-value" id="admin-memory">0MB</span>
-                    <span class="stat-label">Memoria Usada</span>
-                </div>
-            </div>
-            <div class="action-card">
-                <h3>⚡ Acciones Rápidas</h3>
-                <div class="quick-actions-grid">
-                    <button onclick="showAdminSection('bots')" class="btn-glow">🤖 Gestionar Bots</button>
-                    <button onclick="showAdminSection('users')" class="btn-glow">👥 Gestionar Usuarios</button>
-                    <button onclick="showAdminSection('ai')" class="btn-glow">🧠 IA Assistant</button>
-                    <button onclick="showAdminSection('console')" class="btn-outline">💻 Ver Consola</button>
-                </div>
-            </div>
-        </section>
-
-        <!-- Bots Management -->
-        <section id="admin-bots" class="section">
-            <h2 class="section-title">🤖 Gestión de Bots</h2>
-            <div class="bots-table-container">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Estado</th>
-                            <th>Nombre</th>
-                            <th>Número</th>
-                            <th>Dueño</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="bots-table"></tbody>
-                </table>
-            </div>
-        </section>
-
-        <!-- Users Management -->
-        <section id="admin-users" class="section">
-            <h2 class="section-title">👥 Gestión de Usuarios</h2>
-            <div class="section-header">
-                <button onclick="showCreateUserModal()" class="btn-glow">➕ Crear Usuario</button>
-            </div>
-            <div class="users-grid" id="users-list"></div>
-        </section>
-
-        <!-- Console -->
-        <section id="admin-console" class="section">
-            <h2 class="section-title">💻 Consola en Tiempo Real</h2>
-            <div class="console-container">
-                <div class="console-header">
-                    <span>🖥️ Logs del Sistema</span>
-                    <div class="console-controls">
-                        <select id="console-target" class="console-select">
-                            <option value="all">📡 Todos los bots</option>
-                        </select>
-                        <button onclick="clearConsole()" class="btn-outline btn-small">🧹 Limpiar</button>
-                        <button onclick="exportLogs()" class="btn-outline btn-small">📥 Exportar</button>
-                    </div>
-                </div>
-                <div class="console-output" id="console-output">
-                    <div class="console-line system">🟢 Consola iniciada...</div>
-                </div>
-                <div class="console-input-row">
-                    <input type="text" id="console-input" class="console-input" placeholder="Ejecutar comando...">
-                    <button onclick="executeCommand()" class="btn-glow">▶️</button>
-                </div>
-            </div>
-        </section>
-
-        <!-- AI Admin -->
-        <section id="admin-ai" class="section">
-            <h2 class="section-title">🧠 IA Administrativa</h2>
-
-            <div class="ai-tabs">
-                <button class="ai-tab active" onclick="switchAITab('chat')">💬 Chat</button>
-                <button class="ai-tab" onclick="switchAITab('analyze')">📊 Analizar</button>
-                <button class="ai-tab" onclick="switchAITab('generate')">⚡ Generar</button>
-                <button class="ai-tab" onclick="switchAITab('docs')">📁 Documentos</button>
-            </div>
-
-            <!-- AI Chat -->
-            <div id="ai-chat-panel" class="ai-panel active">
-                <div class="ai-chat-container">
-                    <div class="ai-chat-messages" id="ai-messages">
-                        <div class="ai-message system">
-                            <div class="ai-avatar">🧠</div>
-                            <div class="ai-content">
-                                <p>¡Hola Admin! Soy tu asistente IA. Puedo ayudarte con:</p>
-                                <ul>
-                                    <li>📊 Análisis de código y documentos</li>
-                                    <li>⚡ Generación de comandos</li>
-                                    <li>🔧 Recomendaciones de mejora</li>
-                                    <li>📁 Gestión de archivos</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="ai-input-row">
-                        <input type="text" id="ai-input" placeholder="Pregúntame algo..." onkeypress="if(event.key==='Enter') sendAIMessage()">
-                        <button onclick="sendAIMessage()" class="btn-glow">📤</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- AI Analyze -->
-            <div id="ai-analyze-panel" class="ai-panel">
-                <div class="analyze-card">
-                    <h3>📊 Analizar Documentos del Bot</h3>
-                    <p class="text-muted">Selecciona los archivos que quieres analizar y recibe recomendaciones</p>
-                    <div class="file-selector" id="file-selector">
-                        <label><input type="checkbox" value="web.js"> web.js - Servidor Web</label>
-                        <label><input type="checkbox" value="serbot.js"> serbot.js - Gestión de Bots</label>
-                        <label><input type="checkbox" value="message-handler.js"> message-handler.js - Handler</label>
-                        <label><input type="checkbox" value="dashboard.js"> dashboard.js - Dashboard</label>
-                        <label><input type="checkbox" value="auth.js"> auth.js - Autenticación</label>
-                    </div>
-                    <div class="input-group">
-                        <label>¿Qué quieres analizar?</label>
-                        <textarea id="analyze-prompt" rows="3" placeholder="Ej: Analiza la seguridad y dame recomendaciones de mejora..."></textarea>
-                    </div>
-                    <button onclick="analyzeDocuments()" class="btn-glow">🔍 Analizar Documentos</button>
-                    <div id="analyze-result" class="analyze-result"></div>
-                </div>
-            </div>
-
-            <!-- AI Generate -->
-            <div id="ai-generate-panel" class="ai-panel">
-                <div class="generate-card">
-                    <h3>⚡ Generar Comando Nuevo</h3>
-                    <div class="input-group">
-                        <label>Descripción del comando</label>
-                        <textarea id="gen-description" rows="4" placeholder="Ej: Un comando que envíe memes aleatorios de Reddit con título y autor..."></textarea>
-                    </div>
-                    <div class="input-group">
-                        <label>Tipo de comando</label>
-                        <select id="gen-type">
-                            <option value="general">🎯 General</option>
-                            <option value="group">👥 Grupo</option>
-                            <option value="game">🎮 Juego</option>
-                            <option value="download">⬇️ Descarga</option>
-                            <option value="admin">🛡️ Admin</option>
-                        </select>
-                    </div>
-                    <button onclick="generateCommand()" class="btn-glow">⚡ Generar Código</button>
-                    <div id="generate-result" class="generate-result"></div>
-                </div>
-            </div>
-
-            <!-- AI Documents -->
-            <div id="ai-docs-panel" class="ai-panel">
-                <div class="docs-card">
-                    <h3>📁 Gestión de Documentos</h3>
-                    <div class="docs-actions">
-                        <button onclick="listDocuments()" class="btn-outline">📋 Listar Documentos</button>
-                        <button onclick="readDocument()" class="btn-outline">📖 Leer Documento</button>
-                        <button onclick="editDocumentPrompt()" class="btn-outline">✏️ Editar Documento</button>
-                    </div>
-                    <div id="docs-list" class="docs-list"></div>
-                    <div id="doc-editor" class="doc-editor" style="display:none;">
-                        <div class="input-group">
-                            <label>Archivo</label>
-                            <input type="text" id="doc-filename" readonly>
-                        </div>
-                        <div class="input-group">
-                            <label>Contenido</label>
-                            <textarea id="doc-content" rows="20" style="font-family: monospace; font-size: 13px;"></textarea>
-                        </div>
-                        <div class="doc-actions-btns">
-                            <button onclick="saveDocument()" class="btn-glow">💾 Guardar Cambios</button>
-                            <button onclick="closeDocEditor()" class="btn-outline">❌ Cancelar</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Welcome Designer -->
-        <section id="admin-welcome-designer" class="section">
-            <h2 class="section-title">🎨 Diseñador de Welcome</h2>
-            <div class="welcome-designer">
-                <div class="welcome-preview">
-                    <div class="welcome-canvas" id="welcome-canvas">
-                        <div class="welcome-avatar" id="preview-avatar"></div>
-                        <div class="welcome-texts">
-                            <div class="welcome-title" id="preview-title">¡Bienvenido!</div>
-                            <div class="welcome-name" id="preview-name">+521234567890</div>
-                            <div class="welcome-group" id="preview-group">a Mi Grupo</div>
-                            <div class="welcome-members" id="preview-members">Miembro #42</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="welcome-controls">
-                    <h3>🎨 Controles</h3>
-                    <div class="form-grid">
-                        <div class="input-group">
-                            <label>Título</label>
-                            <input type="text" id="w-title" value="¡Bienvenido!" oninput="updateWelcomePreview()">
-                        </div>
-                        <div class="input-group">
-                            <label>Color Título</label>
-                            <input type="color" id="w-title-color" value="#00e5ff" oninput="updateWelcomePreview()">
-                        </div>
-                        <div class="input-group">
-                            <label>Color Nombre</label>
-                            <input type="color" id="w-name-color" value="#ffffff" oninput="updateWelcomePreview()">
-                        </div>
-                        <div class="input-group">
-                            <label>Color Grupo</label>
-                            <input type="color" id="w-group-color" value="#cccccc" oninput="updateWelcomePreview()">
-                        </div>
-                        <div class="input-group">
-                            <label>Color Borde</label>
-                            <input type="color" id="w-border-color" value="#00e5ff" oninput="updateWelcomePreview()">
-                        </div>
-                        <div class="input-group">
-                            <label>Posición Avatar X</label>
-                            <input type="range" id="w-avatar-x" min="50" max="300" value="130" oninput="updateWelcomePreview()">
-                        </div>
-                        <div class="input-group">
-                            <label>Posición Avatar Y</label>
-                            <input type="range" id="w-avatar-y" min="50" max="350" value="200" oninput="updateWelcomePreview()">
-                        </div>
-                        <div class="input-group">
-                            <label>Radio Avatar</label>
-                            <input type="range" id="w-avatar-r" min="50" max="150" value="90" oninput="updateWelcomePreview()">
-                        </div>
-                    </div>
-                    <div class="input-group">
-                        <label>Fondo (Imagen)</label>
-                        <input type="file" accept="image/*" onchange="previewBgImage(this)">
-                    </div>
-                    <div class="input-group">
-                        <label>Mensaje Bienvenida</label>
-                        <textarea id="w-caption" rows="3">👋 ¡Bienvenido @{numero} a *{grupo}*!
-Ya somos *{miembros}* miembros.</textarea>
-                    </div>
-                    <div class="input-group">
-                        <label>Mensaje Despedida</label>
-                        <textarea id="w-caption-bye" rows="2">👋 @{numero} ha salido de *{grupo}*. ¡Hasta pronto!</textarea>
-                    </div>
-                    <button onclick="saveWelcomeConfig()" class="btn-glow">💾 Guardar Configuración</button>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- Create User Modal -->
-    <div id="user-modal" class="modal">
-        <div class="modal-content">
-            <span class="modal-close" onclick="closeUserModal()">&times;</span>
-            <h2>➕ Crear Nuevo Usuario</h2>
-            <form onsubmit="createUser(event)">
-                <div class="input-group">
-                    <label>Número / Usuario</label>
-                    <input type="text" id="new-user-name" placeholder="521234567890" required>
-                </div>
-                <div class="input-group">
-                    <label>Teléfono</label>
-                    <input type="tel" id="new-user-phone" placeholder="521234567890">
-                </div>
-                <div class="input-group">
-                    <label>Contraseña</label>
-                    <input type="password" id="new-user-pass" placeholder="••••••••" required>
-                </div>
-                <div class="input-group">
-                    <label>Rol</label>
-                    <select id="new-user-role">
-                        <option value="user">👤 Usuario</option>
-                        <option value="admin">🛡️ Admin</option>
-                        <option value="owner">👑 Owner</option>
-                    </select>
-                </div>
-                <button type="submit" class="btn-glow btn-full">Crear Usuario</button>
-            </form>
-        </div>
+<main class="main-wrap">
+  <header class="topbar">
+    <button class="hamburger" onclick="toggleSidebar()">☰</button>
+    <h1 class="topbar-title">Panel de Administración</h1>
+    <div class="topbar-right">
+      <span class="role-pill owner" id="admin-role-pill">OWNER</span>
     </div>
+  </header>
 
-    <!-- User Actions Modal -->
-    <div id="user-actions-modal" class="modal">
-        <div class="modal-content">
-            <span class="modal-close" onclick="closeUserActionsModal()">&times;</span>
-            <h2 id="action-user-name">Usuario</h2>
-            <div class="modal-actions-vertical">
-                <button onclick="addMoney()" class="btn-glow">💰 Agregar Dinero</button>
-                <button onclick="removeMoney()" class="btn-outline">💸 Quitar Dinero</button>
-                <button onclick="setMoney()" class="btn-outline">💵 Establecer Dinero</button>
-                <button onclick="deleteUser()" class="btn-danger">🗑️ Eliminar Usuario</button>
-            </div>
-        </div>
+  <!-- ── OVERVIEW ── -->
+  <section id="admin-sec-overview" class="sec active">
+    <div class="stats-row">
+      <div class="stat-card"><div class="sc-icon">🤖</div><div class="sc-val" id="a-total-bots">0</div><div class="sc-lbl">Total Bots</div></div>
+      <div class="stat-card"><div class="sc-icon">🟢</div><div class="sc-val" id="a-connected">0</div><div class="sc-lbl">Conectados</div></div>
+      <div class="stat-card"><div class="sc-icon">👥</div><div class="sc-val" id="a-total-users">0</div><div class="sc-lbl">Usuarios</div></div>
+      <div class="stat-card"><div class="sc-icon">💾</div><div class="sc-val" id="a-memory">0MB</div><div class="sc-lbl">Memoria</div></div>
     </div>
+  </section>
 
-    <script src="js/admin.js"></script>
+  <!-- ── BOTS ── -->
+  <section id="admin-sec-bots" class="sec">
+    <div class="sec-header"><h2>🤖 Gestión de Bots</h2></div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Estado</th><th>Nombre</th><th>Número</th><th>Owner</th><th>Acciones</th></tr></thead>
+        <tbody id="bots-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── USERS ── -->
+  <section id="admin-sec-users" class="sec">
+    <div class="sec-header">
+      <h2>👥 Usuarios</h2>
+      <button onclick="showCreateUserModal()" class="btn-primary">➕ Crear Usuario</button>
+    </div>
+    <div class="users-grid" id="admin-users-grid"></div>
+  </section>
+
+  <!-- ── TOKENS ── -->
+  <section id="admin-sec-tokens" class="sec">
+    <div class="sec-header"><h2>🔑 Tokens de Registro</h2></div>
+    <div class="token-gen-card">
+      <h3>Generar Token</h3>
+      <div class="form-grid" style="max-width:400px">
+        <div class="input-group"><label>Rol del nuevo usuario</label>
+          <select id="new-token-role"><option value="user">👤 Usuario</option><option value="admin">🛡️ Admin</option></select>
+        </div>
+      </div>
+      <button onclick="generateToken()" class="btn-primary">🔑 Generar Token ASTA-XXXXX</button>
+      <div id="token-result" class="token-display" style="display:none">
+        <span id="token-value"></span>
+        <button onclick="copyToken()" class="btn-sm btn-outline">📋 Copiar</button>
+        <p class="token-note">⚠️ Expira en 24 horas · Solo se puede usar una vez</p>
+      </div>
+    </div>
+    <div style="margin-top:2rem">
+      <h3>Tokens activos</h3>
+      <div id="tokens-list" class="tokens-list"></div>
+    </div>
+  </section>
+
+  <!-- ── CONSOLE ── -->
+  <section id="admin-sec-console" class="sec">
+    <div class="sec-header"><h2>💻 Consola en Tiempo Real</h2></div>
+    <div class="console-wrap">
+      <div class="console-header-bar">
+        <div class="dot red"></div><div class="dot yellow"></div><div class="dot green"></div>
+        <span style="margin-left:.75rem;color:var(--text-muted);font-size:.8rem">Logs del sistema</span>
+        <div style="margin-left:auto;display:flex;gap:.5rem">
+          <button onclick="clearConsole()" class="btn-sm btn-outline">🧹 Limpiar</button>
+          <button onclick="exportLogs()" class="btn-sm btn-outline">📥 Exportar</button>
+        </div>
+      </div>
+      <div class="console-output" id="console-output">
+        <span class="log-line system">$ Consola iniciada...</span>
+      </div>
+      <div class="console-footer">
+        <select id="console-target" class="input-sm"><option value="all">📡 Todos los bots</option></select>
+        <input type="text" id="console-input" class="input-sm flex-1" placeholder="comando...">
+        <button onclick="execCmd()" class="btn-sm btn-primary">▶ Ejecutar</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── AI ADMIN ── -->
+  <section id="admin-sec-ai" class="sec">
+    <div class="sec-header">
+      <h2>🧠 IA de Administración</h2>
+      <p style="color:var(--text-muted);font-size:.85rem">Analiza documentos, crea comandos, detecta bugs y más</p>
+    </div>
+    <div class="ai-layout">
+      <div class="ai-chat-panel">
+        <div class="ai-chat-msgs" id="admin-ai-msgs">
+          <div class="chat-msg bot-msg">
+            <div class="msg-bubble">¡Hola! Soy tu asistente de desarrollo para Asta Bot 🧠<br>Puedo analizar documentos, crear comandos, detectar bugs y dar recomendaciones.</div>
+          </div>
+        </div>
+        <div class="ai-chat-tools">
+          <button onclick="analyzeBot()" class="btn-sm btn-outline">🔍 Analizar Bot</button>
+          <button onclick="listDocuments()" class="btn-sm btn-outline">📄 Documentos</button>
+          <button onclick="toggleDocContext()" class="btn-sm btn-outline" id="doc-ctx-btn">📚 Contexto OFF</button>
+        </div>
+        <div class="chat-input-row">
+          <input type="text" id="admin-ai-input" placeholder="Crear comando, analizar código, detectar bugs..." onkeypress="if(event.key==='Enter')sendAdminAI()">
+          <button onclick="sendAdminAI()" class="btn-primary">Enviar</button>
+        </div>
+      </div>
+      <div class="ai-docs-panel" id="ai-docs-panel" style="display:none">
+        <h4>📄 Documentos del Bot</h4>
+        <div id="ai-docs-list" class="ai-docs-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── WELCOME ── -->
+  <section id="admin-sec-welcome" class="sec">
+    <div class="sec-header"><h2>👋 Diseñador de Welcome Global</h2></div>
+    <div class="welcome-designer-layout">
+      <div class="wlc-preview-wrap">
+        <canvas id="admin-wlc-canvas" width="600" height="300"></canvas>
+        <button onclick="downloadAdminWelcome()" class="btn-sm btn-outline" style="margin-top:.5rem">📥 Descargar Preview</button>
+      </div>
+      <div class="wlc-controls">
+        <div class="form-grid">
+          <div class="input-group"><label>Título</label><input type="text" id="aw-title" value="¡Bienvenido!" oninput="renderAdminCanvas()"></div>
+          <div class="input-group"><label>Color Título</label><input type="color" id="aw-title-color" value="#00e5ff" oninput="renderAdminCanvas()"></div>
+          <div class="input-group"><label>Color Nombre</label><input type="color" id="aw-name-color" value="#ffffff" oninput="renderAdminCanvas()"></div>
+          <div class="input-group"><label>Color Grupo</label><input type="color" id="aw-group-color" value="#cccccc" oninput="renderAdminCanvas()"></div>
+          <div class="input-group"><label>Color Borde</label><input type="color" id="aw-border-color" value="#00e5ff" oninput="renderAdminCanvas()"></div>
+        </div>
+        <div class="form-grid">
+          <div class="input-group"><label>X Avatar: <span id="aw-ax-val">130</span></label><input type="range" id="aw-avatar-x" min="50" max="400" value="130" oninput="document.getElementById('aw-ax-val').textContent=this.value;renderAdminCanvas()"></div>
+          <div class="input-group"><label>Y Avatar: <span id="aw-ay-val">150</span></label><input type="range" id="aw-avatar-y" min="50" max="250" value="150" oninput="document.getElementById('aw-ay-val').textContent=this.value;renderAdminCanvas()"></div>
+          <div class="input-group"><label>Radio: <span id="aw-ar-val">70</span></label><input type="range" id="aw-avatar-r" min="30" max="130" value="70" oninput="document.getElementById('aw-ar-val').textContent=this.value;renderAdminCanvas()"></div>
+        </div>
+        <div class="input-group"><label>Mensaje de Bienvenida</label><textarea id="aw-caption" rows="3">👋 ¡Bienvenido @{numero} a *{grupo}*!\nYa somos *{miembros}* miembros.</textarea><small>Variables: {numero}, {grupo}, {miembros}, {nombre}</small></div>
+        <div class="input-group"><label>Mensaje de Despedida</label><textarea id="aw-caption-bye" rows="2">👋 @{numero} ha salido de *{grupo}*. ¡Hasta pronto!</textarea></div>
+        <div class="input-group">
+          <label>Aplicar a Grupo (JID)</label>
+          <input type="text" id="aw-group-jid" placeholder="120363XXXXXXXXXX@g.us">
+        </div>
+        <button onclick="saveAdminWelcome()" class="btn-primary">💾 Guardar Welcome</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Create User Modal -->
+<div class="modal" id="create-user-modal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('create-user-modal')">✕</button>
+    <h2>➕ Crear Usuario</h2>
+    <div class="form-grid">
+      <div class="input-group">
+        <label>Número / Usuario</label>
+        <input type="text" id="nu-username" placeholder="5212345678" oninput="validateCreateUser()">
+        <span class="field-hint" id="nu-user-hint"></span>
+      </div>
+      <div class="input-group">
+        <label>Contraseña</label>
+        <input type="password" id="nu-password" placeholder="Mínimo 6 caracteres" oninput="validateCreateUser()">
+        <span class="field-hint" id="nu-pass-hint"></span>
+      </div>
+      <div class="input-group">
+        <label>Rol</label>
+        <select id="nu-role"><option value="user">👤 Usuario</option><option value="admin">🛡️ Admin</option></select>
+      </div>
+    </div>
+    <div class="create-user-guide">
+      <p><strong>📋 Instrucciones para el nuevo usuario:</strong></p>
+      <ol>
+        <li>Ir a la página de login: <code>/login</code></li>
+        <li>Usar <strong>Usuario</strong>: el número/nombre que se crea</li>
+        <li>Usar la <strong>Contraseña</strong> establecida aquí</li>
+      </ol>
+    </div>
+    <button onclick="createUser()" class="btn-primary btn-full" id="create-user-btn">➕ Crear Usuario</button>
+    <div id="create-user-result" style="display:none;margin-top:1rem"></div>
+  </div>
+</div>
+
+<!-- User Actions Modal -->
+<div class="modal" id="user-action-modal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('user-action-modal')">✕</button>
+    <h2 id="ua-title">Usuario</h2>
+    <div class="ua-info" id="ua-info"></div>
+    <div class="modal-actions" style="flex-direction:column;gap:.75rem">
+      <div style="display:flex;gap:.5rem">
+        <input type="number" id="ua-amount" placeholder="Monto" style="flex:1;padding:.5rem;background:var(--bg-ter);border:1px solid var(--border);border-radius:6px;color:var(--text-primary)">
+        <button onclick="userMoneyAction('add')" class="btn-sm btn-primary">➕ Agregar</button>
+        <button onclick="userMoneyAction('remove')" class="btn-sm btn-outline">➖ Quitar</button>
+        <button onclick="userMoneyAction('set')" class="btn-sm btn-outline">💵 Fijar</button>
+      </div>
+      <button onclick="deleteSelectedUser()" class="btn-danger btn-full">🗑️ Eliminar Usuario</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+<script src="js/admin.js"></script>
 </body>
-
 </html>

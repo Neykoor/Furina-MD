@@ -2,23 +2,14 @@ import fs from 'fs'
 import path from 'path'
 
 let handler = async (m, { conn, args, command }) => {
-    const isOwner = global.owner?.some(o => {
-        const id = Array.isArray(o) ? o[0] : o
-        return id === m.sender
-    })
-
-    if (!isOwner) {
-        return conn.sendMessage(m.chat, {
-            text: '👑 Este comando es solo para *owners*.'
-        }, { quoted: m })
-    }
-
     if (command === 'crearuser') {
         const [username, numero, password, role = 'user'] = args
 
         if (!username || !numero || !password) {
             return conn.sendMessage(m.chat, {
-                text: '❌ Uso: *#crearuser <user> <numero> <contraseña> [rol]*\n\n' +
+                text: '❌ Uso: *#crearuser <user> <numero> <contraseña> [rol]*
+
+' +
                     'Ejemplo: #crearuser fernando 521234567890 miPass123 user'
             }, { quoted: m })
         }
@@ -52,11 +43,18 @@ let handler = async (m, { conn, args, command }) => {
 
             await conn.sendMessage(m.chat, {
                 text: data.success
-                    ? `✅ *Usuario Web Creado*\n\n` +
-                    `👤 Usuario: *${username}*\n` +
-                    `📱 Número: *${cleanNum}*\n` +
-                    `🔐 Rol: *${role}*\n` +
-                    `🔑 Contraseña: ||${password}||\n\n` +
+                    ? `✅ *Usuario Web Creado*
+
+` +
+                    `👤 Usuario: *${username}*
+` +
+                    `📱 Número: *${cleanNum}*
+` +
+                    `🔐 Rol: *${role}*
+` +
+                    `🔑 Contraseña: ||${password}||
+
+` +
                     `🌐 Accede en: ${webUrl}/login`
                     : `❌ ${data.error || 'Error al crear usuario'}`,
                 contextInfo: {
@@ -74,10 +72,17 @@ let handler = async (m, { conn, args, command }) => {
         } catch (e) {
             console.error('Error creando usuario:', e)
             await conn.sendMessage(m.chat, {
-                text: `❌ Error al crear usuario web.\n\nVerifica que:\n` +
-                    `• La web esté activa (puerto ${port})\n` +
-                    `• El servidor no tenga errores\n` +
-                    `• Tengas permisos de owner\n\n` +
+                text: `❌ Error al crear usuario web.
+
+Verifica que:
+` +
+                    `• La web esté activa (puerto ${port})
+` +
+                    `• El servidor no tenga errores
+` +
+                    `• Tengas permisos de owner
+
+` +
                     `Error: ${e.message}`,
                 contextInfo: {
                     externalAdReply: {

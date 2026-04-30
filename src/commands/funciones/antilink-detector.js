@@ -188,27 +188,23 @@ async function takeAction(sock, msg, groupJid, senderJid, detectedLinks, config)
     currentWarns++
     warnedUsers.set(warnKey, currentWarns)
 
+    // Construir mensaje de advertencia
     const remaining = Math.max(0, warnCount - currentWarns)
     const linksList = detectedLinks.map(l => `• \`${l.url}\` (${l.type})`).join('\n')
 
-    // Construir mensaje de advertencia
     let warningText = `🛡️ *Anti-Link Activado*
 
-`
-    warningText += `@${userNum} *envió enlaces no permitidos:*
-${linksList}
+    @${userNum} *envió enlaces no permitidos:*
+    ${linksList}
 
-`
-    warningText += `⚠️ *Advertencia ${currentWarns}/${warnCount}*
-`
-    warningText += `🔴 *Restantes:* ${remaining}
+    ⚠️ *Advertencia ${currentWarns}/${warnCount}*
+    🔴 *Restantes:* ${remaining}
 
-`
+    `
 
     if (remaining <= 0) {
         warningText += `⛔ *Has alcanzado el límite de advertencias.*
-`
-        warningText += `_Acción aplicada: ${action === 'kick' ? 'Expulsión' : action === 'mute' ? 'Silenciado' : 'Mensajes eliminados'}_`
+    _Acción aplicada: ${action === 'kick' ? 'Expulsión' : action === 'mute' ? 'Silenciado' : 'Mensajes eliminados'}_`
     } else {
         warningText += `📵 *Evita enviar enlaces no autorizados para no ser sancionado.*`
     }

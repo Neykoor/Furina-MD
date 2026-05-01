@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Asta Bot</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body class="dashboard">
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <img id="sidebar-logo" src="" class="sidebar-logo">
+            <span>Asta Admin</span>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="#overview" class="nav-item active" onclick="showAdminSection('overview')">📊 Resumen</a>
+            <a href="#bots" class="nav-item" onclick="showAdminSection('bots')">🤖 Bots</a>
+            <a href="#users" class="nav-item" onclick="showAdminSection('users')">👥 Usuarios</a>
+            <a href="#console" class="nav-item" onclick="showAdminSection('console')">💻 Consola</a>
+            <a href="#welcome" class="nav-item" onclick="showAdminSection('welcome')">👋 Welcome</a>
+        </nav>
+        <div class="sidebar-footer">
+            <button onclick="logout()" class="btn-danger">🚪 Cerrar Sesión</button>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header class="dashboard-header">
+            <h1>Panel de Administración</h1>
+            <div class="user-badge owner" id="user-role">OWNER</div>
+        </header>
+
+        <!-- Overview -->
+        <section id="admin-overview" class="section active">
+            <div class="stats-dashboard">
+                <div class="stat-card large">
+                    <span class="stat-icon">🤖</span>
+                    <span class="stat-value" id="admin-total-bots">0</span>
+                    <span class="stat-label">Total Bots</span>
+                </div>
+                <div class="stat-card large">
+                    <span class="stat-icon">🟢</span>
+                    <span class="stat-value" id="admin-connected">0</span>
+                    <span class="stat-label">Conectados</span>
+                </div>
+                <div class="stat-card large">
+                    <span class="stat-icon">👥</span>
+                    <span class="stat-value" id="admin-total-users">0</span>
+                    <span class="stat-label">Usuarios Web</span>
+                </div>
+                <div class="stat-card large">
+                    <span class="stat-icon">💾</span>
+                    <span class="stat-value" id="admin-memory">0MB</span>
+                    <span class="stat-label">Memoria</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Bots -->
+        <section id="admin-bots" class="section">
+            <h2 class="section-title">🤖 Gestión de Bots</h2>
+            <div class="bots-table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Estado</th>
+                            <th>Nombre</th>
+                            <th>Número</th>
+                            <th>Owner</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bots-table"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Users -->
+        <section id="admin-users" class="section">
+            <h2 class="section-title">👥 Gestión de Usuarios</h2>
+            <button onclick="showCreateUserModal()" class="btn-glow mb-lg">➕ Crear Usuario</button>
+            <div class="users-grid" id="users-list"></div>
+        </section>
+
+        <!-- Console -->
+        <section id="admin-console" class="section">
+            <h2 class="section-title">💻 Consola de Comandos</h2>
+            <div class="console-container">
+                <div class="console-header">
+                    <span>Logs en tiempo real</span>
+                    <div class="console-controls">
+                        <button onclick="clearConsole()" class="btn-outline">🧹 Limpiar</button>
+                        <button onclick="exportLogs()" class="btn-outline">📥 Exportar</button>
+                    </div>
+                </div>
+                <div class="console-output" id="console-output">
+                    <div class="console-line system">🟢 Consola iniciada...</div>
+                </div>
+                <div class="console-input-row">
+                    <select id="console-target" class="console-select">
+                        <option value="all">📡 Todos los bots</option>
+                    </select>
+                    <input type="text" id="console-input" class="console-input input-field" placeholder="Escribe un comando...">
+                    <button onclick="executeCommand()" class="btn-glow">▶️ Ejecutar</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Welcome Designer -->
+        <section id="admin-welcome" class="section">
+            <h2 class="section-title">👋 Diseñador de Welcome</h2>
+            <div class="welcome-designer">
+                <div class="welcome-preview" id="welcome-preview">
+                    <div class="welcome-canvas" id="welcome-canvas">
+                        <div class="welcome-avatar" id="preview-avatar"></div>
+                        <div class="welcome-texts">
+                            <div class="welcome-title" id="preview-title">¡Bienvenido!</div>
+                            <div class="welcome-name" id="preview-name">+521234567890</div>
+                            <div class="welcome-group" id="preview-group">a Grupo de Prueba</div>
+                            <div class="welcome-members" id="preview-members">50 miembros</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="welcome-controls">
+                    <h3>🎨 Personalización</h3>
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Título</label>
+                            <input type="text" id="w-title" value="¡Bienvenido!">
+                        </div>
+                        <div class="input-group">
+                            <label>Color del Título</label>
+                            <input type="color" id="w-title-color" value="#00e5ff">
+                        </div>
+                        <div class="input-group">
+                            <label>Color del Nombre</label>
+                            <input type="color" id="w-name-color" value="#ffffff">
+                        </div>
+                        <div class="input-group">
+                            <label>Color del Grupo</label>
+                            <input type="color" id="w-group-color" value="#cccccc">
+                        </div>
+                        <div class="input-group">
+                            <label>Color del Borde</label>
+                            <input type="color" id="w-border-color" value="#00e5ff">
+                        </div>
+                        <div class="input-group">
+                            <label>Posición X del Avatar</label>
+                            <input type="range" id="w-avatar-x" min="50" max="400" value="130">
+                        </div>
+                        <div class="input-group">
+                            <label>Posición Y del Avatar</label>
+                            <input type="range" id="w-avatar-y" min="50" max="350" value="200">
+                        </div>
+                        <div class="input-group">
+                            <label>Radio del Avatar</label>
+                            <input type="range" id="w-avatar-r" min="50" max="150" value="90">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>Mensaje de Bienvenida</label>
+                        <textarea id="w-caption" rows="3">👋 ¡Bienvenido @{numero} a *{grupo}*!
+Ya somos *{miembros}* miembros.</textarea>
+                        <small>Variables: {numero}, {grupo}, {miembros}, {nombre}</small>
+                    </div>
+                    <div class="input-group">
+                        <label>Mensaje de Despedida</label>
+                        <textarea id="w-caption-bye" rows="2">👋 @{numero} ha salido de *{grupo}*. ¡Hasta pronto!</textarea>
+                    </div>
+                    <div class="input-group">
+                        <label>Fondo (URL o subir imagen)</label>
+                        <input type="file" accept="image/*" id="w-bg-image" onchange="previewBgImage(this)">
+                    </div>
+                    <button onclick="saveWelcomeConfig()" class="btn-glow">💾 Guardar Configuración</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Create User Modal -->
+    <div id="user-modal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeUserModal()">&times;</span>
+            <h2>Crear Usuario</h2>
+            <form onsubmit="createUser(event)">
+                <div class="input-group">
+                    <label>Nombre de Usuario</label>
+                    <input type="text" id="new-user-name" required>
+                </div>
+                <div class="input-group">
+                    <label>Número de Teléfono</label>
+                    <input type="tel" id="new-user-phone" required>
+                </div>
+                <div class="input-group">
+                    <label>Contraseña</label>
+                    <input type="password" id="new-user-pass" required>
+                </div>
+                <div class="input-group">
+                    <label>Rol</label>
+                    <select id="new-user-role">
+                        <option value="user">👤 Usuario</option>
+                        <option value="admin">🛡️ Admin</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-glow btn-full">➕ Crear Usuario</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- User Actions Modal -->
+    <div id="user-actions-modal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeUserActionsModal()">&times;</span>
+            <h2 id="action-user-name">Usuario</h2>
+            <div class="modal-actions">
+                <button onclick="addMoney()" class="btn-glow">💰 Agregar Dinero</button>
+                <button onclick="removeMoney()" class="btn-outline">💸 Quitar Dinero</button>
+                <button onclick="setMoney()" class="btn-outline">💵 Establecer Dinero</button>
+                <button onclick="deleteUser()" class="btn-danger">🗑️ Eliminar Usuario</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/admin.js"></script>
+</body>
+</html>

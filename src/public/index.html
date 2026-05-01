@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Asta Bot – WhatsApp Bot 24/7</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="landing-body">
+
+  <div style="position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(rgba(0,217,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,217,255,.025) 1px,transparent 1px);
+  background-size:48px 48px;
+  mask-image:radial-gradient(ellipse at center,black 20%,transparent 75%)"></div>
+
+  <nav class="navbar">
+    <div class="nav-brand">
+      <img id="nav-logo" src="" onerror="this.style.display='none'" class="nav-logo">
+      <span class="nav-brand-name" id="nav-name">Asta Bot</span>
+    </div>
+    <div class="nav-links">
+      <a href="#features">Características</a>
+      <a href="#owners">Creadores</a>
+      <a href="/vincular" class="btn-primary" style="padding:.45rem 1rem;font-size:.88rem">📱 Solicitar Bot</a>
+      <a href="/login" class="btn-primary"
+        style="padding:.45rem 1rem;font-size:.88rem;background:var(--bg-ter);color:var(--text-primary);border:1px solid var(--border-md)">Iniciar
+        Sesión</a>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-content">
+      <div class="hero-badge">🆕 WhatsApp Bot 24/7 con Panel Web</div>
+      <h1 class="hero-title">
+        <span class="gradient-text">Asta Bot</span><br>
+        Control total desde la web
+      </h1>
+      <p class="hero-desc">Gestiona tu Sub-Bot desde cualquier lugar. Configura grupos, personaliza welcome, descarga
+        multimedia y mucho más — todo desde tu navegador.</p>
+      <div class="hero-btns">
+        <a href="/login" class="btn-primary">🚀 Abrir Panel</a>
+        <a href="/vincular" class="btn-outline">📱 Solicitar Bot</a>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="phone-mock">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <div class="chat-head">
+            <img id="phone-ico" src="" onerror="this.src=''" class="chat-av">
+            <div>
+              <div class="chat-nm">Asta Bot</div>
+              <div class="chat-st">🟢 En línea</div>
+            </div>
+          </div>
+          <div class="phone-msgs">
+            <div class="pm b">¡Hola! Soy Asta Bot 🤖</div>
+            <div class="pm b">Usa <strong>.menu</strong> para ver comandos</div>
+            <div class="pm u">.menu</div>
+            <div class="pm b">📋 Menú cargado · 40+ comandos disponibles</div>
+            <div class="pm u">.ping</div>
+            <div class="pm b">🏓 Pong! 42ms</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" class="features-sec">
+    <h2>✨ Características</h2>
+    <div class="features-grid">
+      <div class="feat-card">
+        <div class="feat-icon">🤖</div>
+        <h3>Sub-Bots 24/7</h3>
+        <p>Tu propio bot siempre conectado, sin apagarse.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🌐</div>
+        <h3>Panel Web</h3>
+        <p>Administra desde cualquier dispositivo con navegador.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">👥</div>
+        <h3>Gestión de Grupos</h3>
+        <p>Controla en qué grupos está tu bot y configura cada uno.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">👋</div>
+        <h3>Welcome Personalizado</h3>
+        <p>Diseña tu mensaje de bienvenida con editor visual.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">⬇️</div>
+        <h3>Descargas</h3>
+        <p>YouTube, TikTok, Instagram, Facebook — audio y video.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🧠</div>
+        <h3>IA Integrada</h3>
+        <p>Asistente inteligente para usuarios y administradores.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🎮</div>
+        <h3>Juegos RPG & Gacha</h3>
+        <p>Sistema completo de economía y coleccionables.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">⚡</div>
+        <h3>Anti-Spam</h3>
+        <p>Protección automática contra spam y abuso.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="owners" class="owners-sec">
+    <h2>👑 Creadores</h2>
+    <div class="owners-list" id="owners-list">
+      <div class="owner-card">
+        <div class="owner-av">👑</div>
+        <div class="owner-name">Cargando...</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="stats-sec">
+    <div class="stats-grid">
+      <div class="stat-item"><span class="stat-number" id="st-bots">0</span><span class="stat-label">Bots Activos</span>
+      </div>
+      <div class="stat-item"><span class="stat-number" id="st-users">0</span><span class="stat-label">Usuarios</span>
+      </div>
+      <div class="stat-item"><span class="stat-number" id="st-uptime">0h</span><span class="stat-label">Uptime</span>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <p>Hecho con ❤️ por <span class="gradient-text">AstaBot</span> · v2.0.0</p>
+  </footer>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const d = await fetch('/api/info').then(r => r.json())
+        if (d.logo) { document.getElementById('nav-logo').src = d.logo; document.getElementById('phone-ico').src = d.icono || d.logo }
+        if (d.name) document.getElementById('nav-name').textContent = d.name
+        document.getElementById('st-bots').textContent = d.stats?.totalBots || 0
+        document.getElementById('st-users').textContent = d.stats?.totalUsers || 0
+        document.getElementById('st-uptime').textContent = fmtTime(d.stats?.uptime || 0)
+        const ol = document.getElementById('owners-list')
+        if (d.owners?.length) {
+          ol.innerHTML = d.owners.map(o => `
+        <div class="owner-card">
+          <div class="owner-av">👑</div>
+          <div class="owner-name">${esc(o.name)}</div>
+          <div class="owner-num">+${o.number}</div>
+        </div>`).join('')
+        } else ol.innerHTML = '<div class="owner-card"><div class="owner-av">👑</div><div class="owner-name">Owner</div></div>'
+        animateNumbers()
+      } catch (e) { console.error(e) }
+    })
+
+    function fmtTime(s) {
+      const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60)
+      return h > 0 ? `${h}h` : `${m}m`
+    }
+
+    function esc(s) { return String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') }
+
+    function animateNumbers() {
+      document.querySelectorAll('.stat-number').forEach(el => {
+        const target = parseInt(el.textContent) || 0
+        if (!target) return
+        let cur = 0; const inc = target / 40
+        const t = setInterval(() => {
+          cur += inc; if (cur >= target) { el.textContent = target; clearInterval(t) }
+          else el.textContent = Math.floor(cur)
+        }, 25)
+      })
+    }
+  </script>
+</body>
+
+</html>

@@ -1,28 +1,21 @@
-import fs from 'fs'
-import path from 'path'
 import NodeCache from 'node-cache'
 
-const dbFile = path.join(process.cwd(), 'data', 'anti-config.json')
+// Cache: cada usuario tiene un conteo de mensajes que se resetea cada 60 segundos
 const spamCache = new NodeCache({ stdTTL: 60 })
-
-function loadDb() {
-    if (!fs.existsSync(dbFile)) return {}
-    return JSON.parse(fs.readFileSync(dbFile, 'utf-8'))
-}
-
-function isEnabled(jid, key) {
-    return loadDb()[jid]?.[key] === true
-}
 
 function cleanNum(jid) {
     return String(jid).split('@')[0].split(':')[0].replace(/\D/g, '')
 }
 
-export async function antiSpamDetector(sock, m) {
+// Límite: 5 mensajes en 60 segundos = spam
+const SPAM_LIMIT = 5
+
+// isBotAdmin es pasado desde anti-master.js (calculado en message-handler.js)
+export async function antiSpamDetector(sock, m, isBotAdmin = false) {
     const groupJid = m.key?.remoteJid
     if (!groupJid || !groupJid.endsWith('@g.us')) return false
     if (m.key?.fromMe) return false
-    if (!isEnabled(groupJid, 'antiSpam')) return false
+    if (!isBotAdmin) return false // Sin permisos de admin no podemos borrar
 
     const sender = m.key?.participant || m.key?.remoteJid
     const senderNum = cleanNum(sender)
@@ -32,16 +25,18 @@ export async function antiSpamDetector(sock, m) {
     count++
     spamCache.set(key, count)
 
-    if (count >= 5) {
+    if (count >= SPAM_LIMIT) {
         try {
             await sock.sendMessage(groupJid, { delete: m.key })
             await sock.sendMessage(groupJid, {
-                text: `📵 @${senderNum} spam detectado.`,
+                text: `📵 @${senderNum} spam detectado. Por favor, no envíes tantos mensajes seguidos.`,
                 mentions: [sender]
             })
             spamCache.del(key)
             return true
-        } catch { return false }
+        } catch {
+            return false
+        }
     }
     return false
 }

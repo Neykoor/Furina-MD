@@ -1,39 +1,14 @@
-import fs from 'fs'
-import path from 'path'
+// ══════════════════════════════════════════════════════════════════
+// NOTA: El Anti-Call real se maneja en anti-master.js →
+// antiCallDetectorMaster(), que es llamado desde loader.js
+// con el evento 'call' de Baileys.
+//
+// Las llamadas de WhatsApp NO llegan como mensajes en grupos;
+// llegan como un evento separado 'call'. Por eso este archivo
+// ya no se usa directamente, la lógica está centralizada.
+// ══════════════════════════════════════════════════════════════════
 
-const dbFile = path.join(process.cwd(), 'data', 'anti-config.json')
-
-function loadDb() {
-    if (!fs.existsSync(dbFile)) return {}
-    return JSON.parse(fs.readFileSync(dbFile, 'utf-8'))
-}
-
-function isEnabled(jid, key) {
-    return loadDb()[jid]?.[key] === true
-}
-
-function cleanNum(jid) {
-    return String(jid).split('@')[0].split(':')[0].replace(/\D/g, '')
-}
-
-export async function antiCallDetector(sock, m) {
-    const groupJid = m.key?.remoteJid
-    if (!groupJid || !groupJid.endsWith('@g.us')) return false
-    if (m.key?.fromMe) return false
-    if (!isEnabled(groupJid, 'antiCall')) return false
-
-    const tipo = Object.keys(m.message || {})[0]
-    if (tipo !== 'call' && tipo !== 'callLogMessage') return false
-
-    const sender = m.key?.participant || m.key?.remoteJid
-    const senderNum = cleanNum(sender)
-
-    try {
-        await sock.sendMessage(groupJid, { delete: m.key })
-        await sock.sendMessage(groupJid, {
-            text: `📞 @${senderNum} llamadas no permitidas.`,
-            mentions: [sender]
-        })
-        return true
-    } catch { return false }
+export async function antiCallDetector(sock, callData) {
+    // Stub: La implementación real está en anti-master.js → antiCallDetectorMaster()
+    return false
 }

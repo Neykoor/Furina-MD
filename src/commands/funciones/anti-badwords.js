@@ -1,17 +1,3 @@
-import fs from 'fs'
-import path from 'path'
-
-const dbFile = path.join(process.cwd(), 'data', 'anti-config.json')
-
-function loadDb() {
-    if (!fs.existsSync(dbFile)) return {}
-    return JSON.parse(fs.readFileSync(dbFile, 'utf-8'))
-}
-
-function isEnabled(jid, key) {
-    return loadDb()[jid]?.[key] === true
-}
-
 function cleanNum(jid) {
     return String(jid).split('@')[0].split(':')[0].replace(/\D/g, '')
 }
@@ -24,16 +10,21 @@ const BAD_WORDS = [
     'bitch', 'asshole', 'dick', 'cunt', 'nigger', 'faggot', 'retard'
 ]
 
-export async function antiBadWordsDetector(sock, m) {
+// isBotAdmin es pasado desde anti-master.js (calculado en message-handler.js)
+export async function antiBadWordsDetector(sock, m, isBotAdmin = false) {
     const groupJid = m.key?.remoteJid
     if (!groupJid || !groupJid.endsWith('@g.us')) return false
     if (m.key?.fromMe) return false
-    if (!isEnabled(groupJid, 'antiBadWords')) return false
+    if (!isBotAdmin) return false
 
-    const text = m.message?.conversation || m.message?.extendedTextMessage?.text || m.message?.imageMessage?.caption || m.message?.videoMessage?.caption || ''
-    const lowerText = text.toLowerCase()
-    const isBad = BAD_WORDS.some(w => lowerText.includes(w))
-    if (!isBad) return false
+    const text = (
+        m.message?.conversation ||
+        m.message?.extendedTextMessage?.text ||
+        m.message?.imageMessage?.caption ||
+        m.message?.videoMessage?.caption || ''
+    ).toLowerCase()
+
+    if (!BAD_WORDS.some(w => text.includes(w))) return false
 
     const sender = m.key?.participant || m.key?.remoteJid
     const senderNum = cleanNum(sender)

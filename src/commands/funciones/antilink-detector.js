@@ -40,18 +40,12 @@ const LINK_PATTERNS = {
     generic: /(?:https?:\/\/)?(?:www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[a-zA-Z0-9._~:/?#[\]@!$&'()*+,;=%-]*)?/gi
 }
 
-// Dominios siempre permitidos (sistema del bot, APIs oficiales)
+// Dominios siempre permitidos (CDNs del sistema y APIs oficiales del bot)
+// NO agregar redes sociales aquí — usar .antilink allow <dominio> por grupo
 const WHITELIST_DOMAINS = [
-    'github.com',
-    'raw.githubusercontent.com',
-    'npmjs.com',
-    'stackoverflow.com',
-    'wikipedia.org',
-    'google.com',
-    'gstatic.com',
-    'whatsapp.net',
-    'fbcdn.net',
-    'instagram.com' // solo si está en permitidos explícitos
+    'whatsapp.net',  // API interna de WhatsApp
+    'fbcdn.net',     // CDN de imágenes de WhatsApp/Meta
+    'gstatic.com',   // Google CDN (íconos, fuentes)
 ]
 
 // Cache de usuarios advertidos recientemente

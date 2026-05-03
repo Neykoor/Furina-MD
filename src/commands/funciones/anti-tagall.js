@@ -1,26 +1,13 @@
-import fs from 'fs'
-import path from 'path'
-
-const dbFile = path.join(process.cwd(), 'data', 'anti-config.json')
-
-function loadDb() {
-    if (!fs.existsSync(dbFile)) return {}
-    return JSON.parse(fs.readFileSync(dbFile, 'utf-8'))
-}
-
-function isEnabled(jid, key) {
-    return loadDb()[jid]?.[key] === true
-}
-
 function cleanNum(jid) {
     return String(jid).split('@')[0].split(':')[0].replace(/\D/g, '')
 }
 
-export async function antiTagAllDetector(sock, m) {
+// isBotAdmin es pasado desde anti-master.js (calculado en message-handler.js)
+export async function antiTagAllDetector(sock, m, isBotAdmin = false) {
     const groupJid = m.key?.remoteJid
     if (!groupJid || !groupJid.endsWith('@g.us')) return false
     if (m.key?.fromMe) return false
-    if (!isEnabled(groupJid, 'antiTagAll')) return false
+    if (!isBotAdmin) return false
 
     const mentions = m.message?.extendedTextMessage?.contextInfo?.mentionedJid || []
     if (mentions.length <= 10) return false
@@ -31,7 +18,7 @@ export async function antiTagAllDetector(sock, m) {
     try {
         await sock.sendMessage(groupJid, { delete: m.key })
         await sock.sendMessage(groupJid, {
-            text: `🔔 @${senderNum} menciones masivas no permitidas.`,
+            text: `🔔 @${senderNum} las menciones masivas no están permitidas.`,
             mentions: [sender]
         })
         return true

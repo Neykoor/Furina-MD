@@ -1,5 +1,5 @@
 // resetAll.js (comando para reiniciar datos Pokémon globalmente)
-import { getAllUsers, updateUserData, resetAllUsersData } from '../../../database/pokemonDB.js';
+import { getAllUsers, updateUserData, resetAllUsersData } from '../../database/pokemonDB.js';
 
 let handler = async (m, { conn }) => {
     const allUsers = getAllUsers();

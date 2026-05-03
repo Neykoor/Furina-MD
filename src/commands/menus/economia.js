@@ -1,6 +1,3 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
-import { join } from 'path'
-
 let handler = async (m, { conn, usedPrefix, command }) => {
     const userJid = m.sender
     const userId = userJid.split('@')[0].replace(/\D/g, '')
@@ -8,37 +5,41 @@ let handler = async (m, { conn, usedPrefix, command }) => {
     const sock = conn
     const subConfig = sock.subConfig || {}
     const botName = subConfig.name || global.namebot || 'Asta Bot'
-    const logoGacha = subConfig.logos?.gacha || subConfig.logos?.grupo || global.icono || global.logo || ''
+    const logoEco = subConfig.logos?.economic || subConfig.logos?.grupo || global.icono || global.logo || ''
     const prefix = usedPrefix || global.prefix || '.'
 
     let txt = `╔══════════════════════╗\n`
     txt += `║    💰 *ECONOMÍA*    ║\n`
     txt += `╚══════════════════════╝\n\n`
-    txt += `👋 @${userId}\n\n`
+    txt += `👋 Hola @${userId}\n\n`
     
-    txt += `💵 *DINERO*\n`
-    txt += `  ${prefix}balance - Ver tu dinero\n`
-    txt += `  ${prefix}depositar <monto> - Guardar en banco\n`
-    txt += `  ${prefix}retirar <monto> - Sacar del banco\n`
-    txt += `  ${prefix}transferir @user <monto> - Enviar dinero\n\n`
+    txt += `💵 *DINERO Y BANCO*\n`
+    txt += `  ${prefix}balance - Ver tu dinero y exp\n`
+    txt += `  ${prefix}deposit <cantidad/all> - Guardar en banco\n`
+    txt += `  ${prefix}withdraw <cantidad/all> - Sacar del banco\n`
+    txt += `  ${prefix}pay @user <cantidad> - Transferir dinero\n\n`
 
-    txt += `🎁 *RECOMPENSAS*\n`
-    txt += `  ${prefix}diario - Recompensa diaria\n`
-    txt += `  ${prefix}crimen - Cometer un crimen\n\n`
+    txt += `💼 *TRABAJOS Y GANANCIAS*\n`
+    txt += `  ${prefix}work - Trabajar (15m)\n`
+    txt += `  ${prefix}slut - Trabajar como scort (20m)\n`
+    txt += `  ${prefix}daily - Recompensa diaria (24h)\n\n`
 
-    txt += `👤 *PERFIL*\n`
-    txt += `  ${prefix}perfil - Tu perfil\n`
-    txt += `  ${prefix}nivel - Nivel y experiencia\n\n`
+    txt += `🦹 *CRIMINALIDAD*\n`
+    txt += `  ${prefix}rob @user - Robar a alguien (45m)\n\n`
 
-    txt += `🏪 *TIENDA*\n`
+    txt += `👤 *PERFIL Y RANKING*\n`
+    txt += `  ${prefix}perfil - Ver tus estadísticas y nivel\n`
+    txt += `  ${prefix}leaderboard [money/exp] - Ver el top 10 global\n\n`
+
+    txt += `🏪 *TIENDA (Próximamente)*\n`
     txt += `  ${prefix}tienda - Ver artículos\n`
     txt += `  ${prefix}comprar <item> - Comprar\n\n`
 
     txt += `📝 *${prefix}menu* - Menú principal`
 
     try {
-        if (logoGacha && logoGacha.startsWith('http')) {
-            await conn.sendMessage(m.chat, { image: { url: logoGacha }, caption: txt, mentions: [userJid] }, { quoted: m })
+        if (logoEco && logoEco.startsWith('http')) {
+            await conn.sendMessage(m.chat, { image: { url: logoEco }, caption: txt, mentions: [userJid] }, { quoted: m })
         } else {
             await conn.sendMessage(m.chat, { text: txt, mentions: [userJid] }, { quoted: m })
         }

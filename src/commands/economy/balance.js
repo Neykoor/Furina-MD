@@ -1,68 +1,25 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
-import { join } from 'path'
+import { getOrCreateUser, formatMoney } from '../../../lib/users.js'
 
-const DATA_DIR = join(process.cwd(), 'data')
-const ECONOMY_FILE = join(DATA_DIR, 'economy.json')
+let handler = async (m, { conn }) => {
+    const userId = m.sender.split('@')[0].replace(/\D/g, '')
+    const user = getOrCreateUser(userId)
 
-function getEconomy() {
-    try {
-        if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true })
-        if (!existsSync(ECONOMY_FILE)) writeFileSync(ECONOMY_FILE, '[]')
-        return JSON.parse(readFileSync(ECONOMY_FILE, 'utf-8'))
-    } catch { return [] }
+    const total = (user.money || 0) + (user.bank || 0)
+
+    const txt = `💰 *BALANCE DE @${userId}*\n\n` +
+        `💵 *Efectivo:* ${formatMoney(user.money)}\n` +
+        `🏦 *Banco:* ${formatMoney(user.bank)}\n` +
+        `💎 *Total:* ${formatMoney(total)}\n\n` +
+        `⭐ *Nivel:* ${user.level || 1}\n` +
+        `✨ *EXP:* ${user.exp || 0}/${(user.level || 1) * 150}`
+
+    await conn.sendMessage(m.chat, {
+        text: txt,
+        mentions: [m.sender]
+    }, { quoted: m })
 }
 
-function saveEconomy(data) {
-    try {
-        if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true })
-        writeFileSync(ECONOMY_FILE, JSON.stringify(data, null, 2))
-    } catch (e) { console.error('Error guardando economía:', e.message) }
-}
-
-function getUserEconomy(userId) {
-    const data = getEconomy()
-    let user = data.find(u => u.username === userId)
-    if (!user) {
-        user = { username: userId, money: 0, bank: 0, exp: 0, level: 1, lastClaim: null, inventory: [] }
-        data.push(user)
-        saveEconomy(data)
-    }
-    return user
-}
-
-function updateUserEconomy(userId, updates) {
-    const data = getEconomy()
-    const index = data.findIndex(u => u.username === userId)
-    if (index === -1) {
-        const user = { username: userId, money: 0, bank: 0, exp: 0, level: 1, lastClaim: null, inventory: [], ...updates }
-        data.push(user)
-        saveEconomy(data)
-        return user
-    }
-    data[index] = { ...data[index], ...updates }
-    saveEconomy(data)
-    return data[index]
-}
-
-let handler = async (m, { conn, usedPrefix, command }) => {
-    const userJid = m.sender
-    const userId = userJid.split('@')[0].replace(/\D/g, '')
-    const eco = getUserEconomy(userId)
-
-    let txt = `💰 *BALANCE DE @${userId}*\n\n`
-    txt += `💵 *Efectivo:* $${eco.money.toLocaleString()}\n`
-    txt += `🏦 *Banco:* $${eco.bank.toLocaleString()}\n`
-    txt += `💰 *Total:* $${(eco.money + eco.bank).toLocaleString()}\n`
-    txt += `⭐ *Nivel:* ${eco.level}\n`
-    txt += `✨ *Exp:* ${eco.exp}\n\n`
-    txt += `📝 Usa *${usedPrefix}depositar <cantidad>* para guardar dinero en el banco\n`
-    txt += `📝 Usa *${usedPrefix}retirar <cantidad>* para sacar dinero del banco`
-
-    await conn.sendMessage(m.chat, { text: txt, mentions: [userJid] }, { quoted: m })
-}
-
-handler.help = ['balance', 'bal', 'dinero', 'wallet']
+handler.help = ['balance', 'bal', 'dinero']
 handler.tags = ['economy']
-handler.command = ['balance', 'bal', 'dinero', 'wallet', 'money']
-
+handler.command = ['balance', 'bal', 'dinero', 'money']
 export default handler

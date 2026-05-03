@@ -1,48 +1,40 @@
-import { getOrCreateUser, updateUser } from '../../../lib/users.js'
+import { getOrCreateUser, updateUser, addExp, checkCooldown, formatMoney } from '../../../lib/users.js'
 
 let handler = async (m, { conn }) => {
     const userId = m.sender.split('@')[0].replace(/\D/g, '')
     const user = getOrCreateUser(userId)
 
-    const now      = Date.now()
-    const cooldown = 24 * 60 * 60 * 1000
+    const cooldown = checkCooldown(user, 'lastDaily', 24 * 60)
 
-    if (user.lastClaim && (now - user.lastClaim) < cooldown) {
-        const remaining = cooldown - (now - user.lastClaim)
-        const hours   = Math.floor(remaining / (60 * 60 * 1000))
-        const minutes = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000))
-        return conn.sendMessage(m.chat, {
-            text: `⏳ Ya reclamaste tu recompensa diaria.\nVuelve en *${hours}h ${minutes}m*`
-        }, { quoted: m })
+    if (!cooldown.ready) {
+        const horas = Math.floor(cooldown.remaining / 60)
+        const mins = cooldown.remaining % 60
+        return conn.reply(m.chat, `⏳ *Ya reclamaste tu daily*\n\nVuelve en: *${horas}h ${mins}m*`, m)
     }
 
-    const baseReward = Math.floor(Math.random() * 500) + 200
-    const bonus = (user.level || 1) * 50
-    const total = baseReward + bonus
+    const baseReward = 1000
+    const levelBonus = (user.level || 1) * 100
+    const totalReward = baseReward + levelBonus
+    const expReward = 50 + (user.level || 1) * 5
 
-    let newMoney = (user.money || 0) + total
-    let newExp   = (user.exp   || 0) + 20
-    let newLevel = user.level  || 1
+    const newMoney = (user.money || 0) + totalReward
+    updateUser(userId, { money: newMoney, lastDaily: Date.now() })
 
-    if (newExp >= newLevel * 100) {
-        newExp -= newLevel * 100
-        newLevel += 1
-    }
+    const expResult = addExp(userId, expReward)
 
-    const updated = updateUser(userId, {
-        money: newMoney,
-        exp: newExp,
-        level: newLevel,
-        lastClaim: now
-    })
+    let txt = `🎁 *RECOMPENSA DIARIA*\n\n` +
+        `💰 *Ganaste:* ${formatMoney(totalReward)}\n` +
+        `📈 *Bonus nivel:* +${formatMoney(levelBonus)}\n` +
+        `✨ *EXP:* +${expReward}\n\n` +
+        `💵 *Balance:* ${formatMoney(newMoney)}\n` +
+        `⭐ *Nivel:* ${expResult.level}`
 
-    await conn.sendMessage(m.chat, {
-        text: `🎁 *RECOMPENSA DIARIA*\n\n💰 Dinero: +$${total.toLocaleString()}\n✨ Exp: +20\n⭐ Nivel: ${newLevel}${bonus > 0 ? `\n🎉 Bonus por nivel: +$${bonus.toLocaleString()}` : ''}\n\n¡Vuelve mañana por más!`,
-        mentions: [m.sender]
-    }, { quoted: m })
+    if (expResult.leveledUp) txt += `\n\n🎉 *¡SUBISTE AL NIVEL ${expResult.level}!*`
+
+    await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
 }
 
-handler.help = ['diario', 'daily', 'claim']
+handler.help = ['daily']
 handler.tags = ['economy']
-handler.command = ['diario', 'daily', 'claim', 'reclamar']
+handler.command = ['daily', 'diario', 'recompensa']
 export default handler

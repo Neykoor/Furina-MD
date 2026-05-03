@@ -1,57 +1,21 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
-import { join } from 'path'
+import { getOrCreateUser, updateUser, formatMoney } from '../../../lib/users.js'
 
-const DATA_DIR = join(process.cwd(), 'data')
-const ECONOMY_FILE = join(DATA_DIR, 'economy.json')
+let handler = async (m, { conn, args }) => {
+    const userId = m.sender.split('@')[0].replace(/\D/g, '')
+    const user = getOrCreateUser(userId)
 
-function getEconomy() {
-    try {
-        if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true })
-        if (!existsSync(ECONOMY_FILE)) writeFileSync(ECONOMY_FILE, '[]')
-        return JSON.parse(readFileSync(ECONOMY_FILE, 'utf-8'))
-    } catch { return [] }
-}
+    const amount = args[0] === 'all' ? user.money : parseInt(args[0])
+    if (!amount || amount <= 0) return conn.reply(m.chat, `💰 *Cuánto depositar?*\n\n_Uso: #deposit [cantidad/all]_`, m)
+    if (amount > (user.money || 0)) return conn.reply(m.chat, `❌ *No tienes suficiente*\n\n💵 Disponible: ${formatMoney(user.money)}`, m)
 
-function saveEconomy(data) {
-    try {
-        if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true })
-        writeFileSync(ECONOMY_FILE, JSON.stringify(data, null, 2))
-    } catch (e) { console.error('Error guardando economía:', e.message) }
-}
-
-let handler = async (m, { conn, args, usedPrefix, command }) => {
-    const userJid = m.sender
-    const userId = userJid.split('@')[0].replace(/\D/g, '')
-    const data = getEconomy()
-    let user = data.find(u => u.username === userId)
-
-    if (!user) {
-        user = { username: userId, money: 0, bank: 0, exp: 0, level: 1, lastClaim: null, inventory: [] }
-        data.push(user)
-        saveEconomy(data)
-    }
-
-    const amount = parseInt(args[0])
-    if (!amount || isNaN(amount) || amount <= 0) {
-        return conn.sendMessage(m.chat, { text: `❌ Ingresa una cantidad válida.\nEjemplo: *${usedPrefix}depositar 1000*` }, { quoted: m })
-    }
-
-    if (user.money < amount) {
-        return conn.sendMessage(m.chat, { text: `❌ No tienes suficiente dinero en efectivo.\nTienes: $${user.money.toLocaleString()}` }, { quoted: m })
-    }
-
-    user.money -= amount
-    user.bank += amount
-    saveEconomy(data)
+    updateUser(userId, { money: (user.money || 0) - amount, bank: (user.bank || 0) + amount })
 
     await conn.sendMessage(m.chat, {
-        text: `🏦 *DEPÓSITO EXITOSO*\n\n💵 Depositado: $${amount.toLocaleString()}\n💰 Efectivo restante: $${user.money.toLocaleString()}\n🏦 Banco: $${user.bank.toLocaleString()}`,
-        mentions: [userJid]
+        text: `🏦 *DEPÓSITO*\n\n💵 *Retirado:* -${formatMoney(amount)}\n🏦 *Banco:* ${formatMoney((user.bank || 0) + amount)}\n💰 *Efectivo:* ${formatMoney((user.money || 0) - amount)}`
     }, { quoted: m })
 }
 
-handler.help = ['depositar <cantidad>', 'dep <cantidad>']
+handler.help = ['deposit', 'dep']
 handler.tags = ['economy']
-handler.command = ['depositar', 'dep', 'deposit']
-
+handler.command = ['deposit', 'dep', 'depositar']
 export default handler

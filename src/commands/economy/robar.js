@@ -1,113 +1,113 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
-import { join } from 'path'
+import { getOrCreateUser, updateUser } from '../../../lib/users.js'
 
-const DATA_DIR = join(process.cwd(), 'data')
-const ECONOMY_FILE = join(DATA_DIR, 'economy.json')
+let handler = async (m, { conn, args }) => {
+    const userId = m.sender.split('@')[0].replace(/\D/g, '')
+    const user = getOrCreateUser(userId)
 
-function getEconomy() {
-    try {
-        if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true })
-        if (!existsSync(ECONOMY_FILE)) writeFileSync(ECONOMY_FILE, '[]')
-        return JSON.parse(readFileSync(ECONOMY_FILE, 'utf-8'))
-    } catch { return [] }
-}
-
-function saveEconomy(data) {
-    try {
-        if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true })
-        writeFileSync(ECONOMY_FILE, JSON.stringify(data, null, 2))
-    } catch (e) { console.error('Error guardando economía:', e.message) }
-}
-
-const crimenes = [
-    { nombre: 'Robar una tienda', ganancia: [100, 800], riesgo: 0.3, exp: 15 },
-    { nombre: 'Asaltar un banco', ganancia: [500, 3000], riesgo: 0.5, exp: 35 },
-    { nombre: 'Hackear un cajero', ganancia: [200, 1500], riesgo: 0.25, exp: 25 },
-    { nombre: 'Vender artículos robados', ganancia: [300, 1200], riesgo: 0.2, exp: 20 },
-    { nombre: 'Secuestrar y pedir rescate', ganancia: [1000, 5000], riesgo: 0.6, exp: 50 },
-    { nombre: 'Estafar por WhatsApp', ganancia: [50, 400], riesgo: 0.15, exp: 10 },
-    { nombre: 'Robar un auto de lujo', ganancia: [800, 4000], riesgo: 0.45, exp: 40 },
-    { nombre: 'Carterista en el metro', ganancia: [20, 200], riesgo: 0.1, exp: 8 },
-    { nombre: 'Robar una casa', ganancia: [400, 2500], riesgo: 0.35, exp: 30 },
-    { nombre: 'Fraude con tarjetas', ganancia: [600, 3500], riesgo: 0.4, exp: 35 }
-]
-
-const castigos = [
-    'La policía te atrapó y te quitaron todo lo robado.',
-    'Fuiste a la cárcel, perdiste dinero en la fianza.',
-    'Un testigo te delató, tuviste que sobornar al juez.',
-    'El dueño te descubrió y llamó a la policía.',
-    'Tu cómplice te traicionó y se quedó con todo.',
-    'Las cámaras de seguridad te grabaron, tuviste que pagar multa.'
-]
-
-let handler = async (m, { conn, usedPrefix }) => {
-    const userJid = m.sender
-    const userId = userJid.split('@')[0].replace(/\D/g, '')
-    const data = getEconomy()
-    let user = data.find(u => u.username === userId)
-
-    if (!user) {
-        user = { username: userId, money: 0, bank: 0, exp: 0, level: 1, lastClaim: null, lastCrime: null, inventory: [] }
-        data.push(user)
-        saveEconomy(data)
-    }
-
+    // Cooldown: 30 minutos entre crímenes
     const now = Date.now()
-    const cooldown = 5 * 60 * 1000
+    const cooldown = 30 * 60 * 1000 // 30 minutos
+    const lastCrime = user.lastCrime || 0
 
-    if (user.lastCrime && (now - user.lastCrime) < cooldown) {
-        const remaining = cooldown - (now - user.lastCrime)
-        const minutes = Math.floor(remaining / (60 * 1000))
-        const seconds = Math.floor((remaining % (60 * 1000)) / 1000)
-        return conn.sendMessage(m.chat, { text: `🚔 Debes esperar *${minutes}m ${seconds}s* antes de cometer otro crimen.\nLa policía está patrullando...` }, { quoted: m })
+    if (now - lastCrime < cooldown) {
+        const tiempoRestante = Math.ceil((cooldown - (now - lastCrime)) / 60000)
+        return conn.reply(m.chat, `⏳ *¡La policía está vigilando!*\n\nEspera *${tiempoRestante}* minutos antes de cometer otro crimen.\n\n🕐 Último crimen: ${new Date(lastCrime).toLocaleTimeString('es-MX')}`, m)
     }
 
-    const crimen = crimenes[Math.floor(Math.random() * crimenes.length)]
-    const exito = Math.random() > crimen.riesgo
+    // Tipos de crímenes con probabilidades y recompensas/riesgos
+    const crimenes = [
+        { nombre: '💰 Robar una tienda', probExito: 0.60, minGanancia: 500, maxGanancia: 2500, multa: 1000, textoExito: 'Entraste sigilosamente y vaciaste la caja registradora', textoFallo: 'La alarma sonó y la policía te atrapó' },
+        { nombre: '🏧 Hackear un cajero', probExito: 0.45, minGanancia: 1000, maxGanancia: 5000, multa: 2000, textoExito: 'Lograste bypassear el sistema de seguridad', textoFallo: 'El banco detectó la intrusión y bloqueó tus cuentas' },
+        { nombre: '🚗 Robar un coche', probExito: 0.50, minGanancia: 800, maxGanancia: 3500, multa: 1500, textoExito: 'Conseguiste vender las piezas en el mercado negro', textoFallo: 'El dueño tenía GPS y la policía te encontró' },
+        { nombre: '💎 Asaltar una joyería', probExito: 0.35, minGanancia: 2000, maxGanancia: 8000, multa: 3000, textoExito: 'Escapaste con las joyas más valiosas', textoFallo: 'Los guardias de seguridad te redujeron' },
+        { nombre: '🏠 Estafar por internet', probExito: 0.70, minGanancia: 300, maxGanancia: 1500, multa: 800, textoExito: 'La víctima cayó en el phishing perfecto', textoFallo: 'Te reportaron y perdiste tu cuenta falsa' },
+        { nombre: '🎰 Timar en el casino', probExito: 0.40, minGanancia: 1500, maxGanancia: 6000, multa: 2500, textoExito: 'Contaste cartas como un profesional', textoFallo: 'El dealer te descubrió y te sacaron a patadas' }
+    ]
 
-    user.lastCrime = now
+    // Si el usuario especifica un crimen
+    let crimen
+    if (args[0]) {
+        const index = parseInt(args[0]) - 1
+        if (index >= 0 && index < crimenes.length) {
+            crimen = crimenes[index]
+        } else {
+            let lista = crimenes.map((c, i) => `${i + 1}. ${c.nombre} (💰${c.minGanancia.toLocaleString()}-${c.maxGanancia.toLocaleString()})`).join('\n')
+            return conn.reply(m.chat, `❌ *Crimen no válido*\n\n📋 *Lista de crímenes disponibles:*\n${lista}\n\n📝 *Uso:* #crimen [número]\nEjemplo: #crimen 3`, m)
+        }
+    } else {
+        // Crimen aleatorio
+        crimen = crimenes[Math.floor(Math.random() * crimenes.length)]
+    }
+
+    // Ejecutar el crimen
+    const exito = Math.random() < crimen.probExito
+    let resultado = ''
+    let ganancia = 0
+    let expGanada = 0
 
     if (exito) {
-        const ganancia = Math.floor(Math.random() * (crimen.ganancia[1] - crimen.ganancia[0])) + crimen.ganancia[0]
-        user.money += ganancia
-        user.exp += crimen.exp
+        ganancia = Math.floor(Math.random() * (crimen.maxGanancia - crimen.minGanancia + 1)) + crimen.minGanancia
+        expGanada = Math.floor(ganancia / 100)
 
-        if (user.exp >= user.level * 100) {
-            user.exp -= user.level * 100
-            user.level += 1
+        // Actualizar usuario
+        user.money = (user.money || 0) + ganancia
+        user.exp = (user.exp || 0) + expGanada
+        user.lastCrime = now
+        user.crimesSuccess = (user.crimesSuccess || 0) + 1
+
+        // Subir de nivel si alcanza la exp necesaria
+        const expNeeded = (user.level || 1) * 100
+        if (user.exp >= expNeeded) {
+            user.level = (user.level || 1) + 1
+            user.exp = user.exp - expNeeded
+            resultado += `\n\n🎉 *¡SUBISTE DE NIVEL!*\n⭐ Nivel: ${user.level}`
         }
 
-        saveEconomy(data)
+        updateUser(userId, user)
 
-        const mensajesExito = [
-            `¡Todo salió perfecto! Nadie te vio.`,
-            `Limpiaste tus huellas, trabajo limpio.`,
-            `El golpe fue un éxito, el dinero es tuyo.`,
-            `Escapaste justo a tiempo con el botín.`,
-            `Nadie sospecha de ti... por ahora.`
-        ]
+        resultado = `✅ *¡CRIMEN EXITOSO!*\n\n${crimen.textoExito}\n\n💰 *Ganancia:* +$${ganancia.toLocaleString()}\n✨ *Exp:* +${expGanada}\n💵 *Efectivo actual:* $${user.money.toLocaleString()}` + resultado
 
         await conn.sendMessage(m.chat, {
-            text: `🦹 *${crimen.nombre.toUpperCase()}*\n\n✅ *¡ÉXITO!*\n${mensajesExito[Math.floor(Math.random() * mensajesExito.length)]}\n\n💰 Ganancia: +$${ganancia.toLocaleString()}\n✨ Exp: +${crimen.exp}\n⭐ Nivel: ${user.level}\n💵 Efectivo actual: $${user.money.toLocaleString()}`,
-            mentions: [userJid]
+            text: resultado,
+            contextInfo: {
+                externalAdReply: {
+                    title: '🦹‍♂️ CRIMEN EXITOSO',
+                    body: `Ganaste $${ganancia.toLocaleString()}`,
+                    thumbnailUrl: global.icono || 'https://i.imgur.com/8QBYRrm.jpg',
+                    sourceUrl: global.canal || 'https://whatsapp.com'
+                }
+            }
         }, { quoted: m })
-    } else {
-        const multa = Math.floor(Math.random() * 300) + 50
-        user.money = Math.max(0, user.money - multa)
-        const castigo = castigos[Math.floor(Math.random() * castigos.length)]
 
-        saveEconomy(data)
+    } else {
+        // Fracaso: pierde dinero o va a la cárcel
+        const dineroActual = user.money || 0
+        const multa = Math.min(crimen.multa, dineroActual) // No puede quedar en negativo
+
+        user.money = dineroActual - multa
+        user.lastCrime = now
+        user.crimesFail = (user.crimesFail || 0) + 1
+
+        updateUser(userId, user)
+
+        resultado = `❌ *¡CRIMEN FALLIDO!*\n\n${crimen.textoFallo}\n\n💸 *Multa:* -$${multa.toLocaleString()}\n💵 *Efectivo actual:* $${user.money.toLocaleString()}\n\n🚔 *La policía te tiene en la mira...*`
 
         await conn.sendMessage(m.chat, {
-            text: `🦹 *${crimen.nombre.toUpperCase()}*\n\n❌ *¡FRACASO!*\n${castigo}\n\n💸 Multa: -$${multa.toLocaleString()}\n💵 Efectivo actual: $${user.money.toLocaleString()}\n\n⏳ Espera 5 minutos para intentar otro crimen.`,
-            mentions: [userJid]
+            text: resultado,
+            contextInfo: {
+                externalAdReply: {
+                    title: '🚔 CRIMEN FALLIDO',
+                    body: `Perdiste $${multa.toLocaleString()}`,
+                    thumbnailUrl: global.icono || 'https://i.imgur.com/8QBYRrm.jpg',
+                    sourceUrl: global.canal || 'https://whatsapp.com'
+                }
+            }
         }, { quoted: m })
     }
 }
 
-handler.help = ['crimen', 'crime', 'robar']
+handler.help = ['crimen']
 handler.tags = ['economy', 'rpg']
-handler.command = ['crimen', 'crime', 'robar']
-
+handler.command = ['crimen', 'crime', 'robar', 'steal']
+handler.cooldown = 30 * 60 // 30 minutos en segundos (backup)
 export default handler

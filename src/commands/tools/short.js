@@ -18,6 +18,6 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
 handler.tags = ['tools']
 handler.help = ['short']
 handler.command = ['short', 'shorturl', 'acortar']
-handler.register = true
+
 
 export default handler

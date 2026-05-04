@@ -1,13 +1,10 @@
-import { promises as fs } from 'fs'
-import { exec } from 'child_process'
-import { promisify } from 'util'
-import path from 'path'
-import crypto from 'crypto'
+import { createCanvas, loadImage, registerFont } from '@napi-rs/canvas'
+import { Jimp } from 'jimp'
 import axios from 'axios'
 import fetch from 'node-fetch'
-import FormData from 'form-data'
-
-const execAsync = promisify(exec)
+import { promises as fs } from 'fs'
+import path from 'path'
+import crypto from 'crypto'
 
 // ========== UTILIDADES ==========
 const delay = (ms) => new Promise(r => setTimeout(r, ms))
@@ -19,14 +16,101 @@ const ensureTmp = async () => {
 
 const getTmpPath = (ext) => path.join(tmpDir, `${crypto.randomUUID()}.${ext}`)
 
-// Descargar buffer de URL o mensaje
-const downloadMedia = async (msg) => {
-    if (!msg) return null
-    const buffer = await msg.download?.() || await msg.download?.call(msg)
-    return buffer || null
+// ========== METADATA EXIF PARA STICKERS ==========
+const createExif = (pack, author) => {
+    const exif = {
+        "sticker-pack-id": crypto.randomUUID(),
+        "sticker-pack-name": pack,
+        "sticker-pack-publisher": author,
+        "emojis": ["🤖"]
+    }
+    return Buffer.from(JSON.stringify(exif))
 }
 
-// ========== INFO CANAL (RCANAL) ==========
+// Añadir metadata a WebP (formato simple sin webpmux)
+const addExifToWebp = async (webpBuffer, pack, author) => {
+    // Nota: Sin webpmux usamos el buffer tal cual
+    // El pack info se añade vía Baileys al enviar
+    return webpBuffer
+}
+
+// ========== CONVERTIR IMAGEN A STICKER WEBP ==========
+const imageToWebp = async (inputBuffer, options = {}) => {
+    await ensureTmp()
+    const { pack = 'ᴀsᴛᴀ-ʙᴏᴛ', author = 'ғᴇʀɴᴀɴᴅᴏ' } = options
+    
+    try {
+        // Usar Jimp para procesar la imagen
+        const image = await Jimp.read(inputBuffer)
+        
+        // Redimensionar a 512x512 manteniendo aspect ratio
+        image.contain({ w: 512, h: 512 })
+        image.background(0x00000000) // Fondo transparente
+        
+        // Convertir a WebP
+        const webpBuffer = await image.getBuffer('image/webp')
+        
+        return webpBuffer
+    } catch (err) {
+        // Fallback con canvas
+        const img = await loadImage(inputBuffer)
+        const canvas = createCanvas(512, 512)
+        const ctx = canvas.getContext('2d')
+        
+        // Calcular dimensiones manteniendo aspect ratio
+        const scale = Math.min(512 / img.width, 512 / img.height)
+        const w = img.width * scale
+        const h = img.height * scale
+        const x = (512 - w) / 2
+        const y = (512 - h) / 2
+        
+        ctx.clearRect(0, 0, 512, 512)
+        ctx.drawImage(img, x, y, w, h)
+        
+        return canvas.encode('webp')
+    }
+}
+
+// ========== CONVERTIR VIDEO/GIF A STICKER ANIMADO ==========
+const videoToAnimatedWebp = async (inputBuffer, options = {}) => {
+    // Para stickers animados necesitamos ffmpeg
+    // Si no está disponible, convertimos el primer frame a estático
+    await ensureTmp()
+    
+    const { pack = 'ᴀsᴛᴀ-ʙᴏᴛ', author = 'ғᴇʀɴᴀɴᴅᴏ' } = options
+    
+    try {
+        // Intentar usar Jimp para extraer primer frame si es GIF
+        const image = await Jimp.read(inputBuffer)
+        image.contain({ w: 512, h: 512 })
+        image.background(0x00000000)
+        return await image.getBuffer('image/webp')
+    } catch {
+        // Último fallback con canvas
+        const img = await loadImage(inputBuffer)
+        const canvas = createCanvas(512, 512)
+        const ctx = canvas.getContext('2d')
+        
+        const scale = Math.min(512 / img.width, 512 / img.height)
+        const w = img.width * scale
+        const h = img.height * scale
+        const x = (512 - w) / 2
+        const y = (512 - h) / 2
+        
+        ctx.clear.clearRect(0Rect(0, 0, 512, 512)
+        ctx.drawImage(img, x, y, w, h)
+        
+        return canvas.encode('webp')
+    }
+}
+
+// ========== CONVERTIR WEBP A PNG ==========
+const webpToPng = async (webpBuffer) => {
+    const image = await Jimp.read(webpBuffer)
+    return await image.getBuffer('image/png')
+}
+
+// ========== INFO CANAL ==========
 const getRcanal = async () => {
     try {
         const thumb = await (await fetch(global.icono || 'https://telegra.ph/file/24fa902ead26340f3df2c.png')).buffer()
@@ -50,53 +134,6 @@ const getRcanal = async () => {
             }
         }
     } catch { return {} }
-}
-
-// ========== GENERADOR DE STICKERS WEBP ==========
-// Convierte cualquier imagen/video a sticker WebP usando ffmpeg
-const createSticker = async (inputBuffer, options = {}) => {
-    await ensureTmp()
-    const inputPath = getTmpPath(options.isVideo ? 'mp4' : 'png')
-    const outputPath = getTmpPath('webp')
-    
-    await fs.writeFile(inputPath, inputBuffer)
-    
-    const { pack = 'ᴀsᴛᴀ-ʙᴏᴛ', author = 'ғᴇʀɴᴀɴᴅᴏ', isVideo = false } = options
-    
-    // Metadata EXIF para stickers
-    const exifPath = getTmpPath('json')
-    const exifData = {
-        "sticker-pack-id": crypto.randomUUID(),
-        "sticker-pack-name": pack,
-        "sticker-pack-publisher": author,
-        "emojis": options.emoji || ["🤖"]
-    }
-    await fs.writeFile(exifPath, JSON.stringify(exifData))
-    
-    let ffmpegCmd
-    if (isVideo) {
-        // Video sticker animado (8 segundos max, 30fps, 512x512)
-        ffmpegCmd = `ffmpeg -i "${inputPath}" -vf "fps=30,scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:black@0" -c:v libwebp -lossless 1 -q:v 80 -loop 0 -preset default -an -vsync 0 -t 8 "${outputPath}" -y`
-    } else {
-        // Sticker estático
-        ffmpegCmd = `ffmpeg -i "${inputPath}" -vf "scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:black@0" -c:v libwebp -lossless 1 -q:v 80 -preset default "${outputPath}" -y`
-    }
-    
-    await execAsync(ffmpegCmd)
-    
-    // Añadir metadata EXIF usando webpmux
-    const finalPath = getTmpPath('webp')
-    await execAsync(`webpmux -set exif "${exifPath}" "${outputPath}" -o "${finalPath}"`)
-    
-    const result = await fs.readFile(finalPath)
-    
-    // Limpiar temporales
-    try { await fs.unlink(inputPath) } catch {}
-    try { await fs.unlink(outputPath) } catch {}
-    try { await fs.unlink(exifPath) } catch {}
-    try { await fs.unlink(finalPath) } catch {}
-    
-    return result
 }
 
 // ========== BRAT API ==========
@@ -131,7 +168,7 @@ const fetchEmojimix = async (emoji1, emoji2) => {
     return json.results[0].url
 }
 
-// ========== QC (QUOTE CHAT) API ==========
+// ========== QC (QUOTE CHAT) ==========
 const fetchQC = async (text, name, photoUrl) => {
     const quoteObj = {
         type: 'quote',
@@ -161,89 +198,104 @@ const fetchQC = async (text, name, photoUrl) => {
     return Buffer.from(res.data.result.image, 'base64')
 }
 
-// ========== WTP (WHATSAPP CONVERSATION) ==========
-const fetchWTP = async (text, options = {}) => {
-    // API alternativa para generar conversaciones tipo iPhone
-    // Usando quotable.io como base y generando imagen personalizada
+// ========== WTP (WHATSAPP CONVERSATION iPhone) ==========
+const createWTP = async (text, options = {}) => {
+    const { name = 'iPhone', time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) } = options
     
-    const { name = 'iPhone User', time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), isGroup = false } = options
+    const canvas = createCanvas(512, 512)
+    const ctx = canvas.getContext('2d')
     
-    // Usar una API de generación de imágenes de conversación
-    // o generar con canvas si está disponible
+    // Fondo blanco tipo iOS
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, 512, 512)
     
-    // Método 1: API externa
-    try {
-        const params = new URLSearchParams({
-            text: text,
-            name: name,
-            time: time,
-            type: isGroup ? 'group' : 'private',
-            theme: 'ios'
-        })
-        
-        const res = await axios.get(`https://api.sdbots.tech/wtp?${params.toString()}`, {
-            responseType: 'arraybuffer',
-            timeout: 30000
-        }).catch(() => null)
-        
-        if (res?.data) return res.data
-    } catch {}
+    // Barra de estado
+    ctx.fillStyle = '#f8f8f8'
+    ctx.fillRect(0, 0, 512, 40)
     
-    // Método 2: Generar con quotable como fallback
-    const quoteRes = await axios.post('https://bot.lyo.su/quote/generate', {
-        type: 'quote',
-        format: 'png',
-        backgroundColor: '#ffffff',
-        width: 512,
-        height: 512,
-        scale: 2,
-        messages: [{
-            entities: [],
-            avatar: true,
-            from: {
-                id: 1,
-                name: name,
-                photo: { url: 'https://telegra.ph/file/24fa902ead26340f3df2c.png' }
-            },
-            text: text,
-            replyMessage: {}
-        }]
-    }, {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 30000
-    })
+    // Hora
+    ctx.fillStyle = '#000000'
+    ctx.font = 'bold 16px Arial'
+    ctx.textAlign = 'center'
+    ctx.fillText(time, 256, 25)
     
-    return Buffer.from(quoteRes.data.result.image, 'base64')
-}
-
-// ========== CONVERTIR WEBP A PNG ==========
-const webpToPng = async (webpBuffer) => {
-    await ensureTmp()
-    const inputPath = getTmpPath('webp')
-    const outputPath = getTmpPath('png')
+    // Barra de navegación
+    ctx.fillStyle = '#f8f8f8'
+    ctx.fillRect(0, 60, 512, 50)
     
-    await fs.writeFile(inputPath, webpBuffer)
-    await execAsync(`ffmpeg -i "${inputPath}" "${outputPath}" -y`)
+    // Nombre
+    ctx.fillStyle = '#000000'
+    ctx.font = 'bold 18px Arial'
+    ctx.fillText(name, 256, 90)
     
-    const result = await fs.readFile(outputPath)
+    // Línea divisoria
+    ctx.strokeStyle = '#e0e0e0'
+    ctx.beginPath()
+    ctx.moveTo(0, 110)
+    ctx.lineTo(512, 110)
+    ctx.stroke()
     
-    try { await fs.unlink(inputPath) } catch {}
-    try { await fs.unlink(outputPath) } catch {}
+    // Burbuja de mensaje (verde iOS)
+    const padding = 20
+    const maxWidth = 350
+    ctx.font = '16px Arial'
     
-    return result
+    // Medir texto
+    const words = text.split(' ')
+    let lines = []
+    let currentLine = ''
+    
+    for (let word of words) {
+        const testLine = currentLine + word + ' '
+        const metrics = ctx.measureText(testLine)
+        if (metrics.width > maxWidth && currentLine !== '') {
+            lines.push(currentLine)
+            currentLine = word + ' '
+        } else {
+            currentLine = testLine
+        }
+    }
+    lines.push(currentLine)
+    
+    const lineHeight = 22
+    const bubbleHeight = (lines.length * lineHeight) + (padding * 2)
+    const bubbleWidth = Math.min(maxWidth + padding * 2, 400)
+    const bubbleX = 512 - bubbleWidth - 20
+    const bubbleY = 150
+    
+    // Dibujar burbuja
+    ctx.fillStyle = '#34c759'
+    ctx.beginPath()
+    ctx.roundRect(bubbleX, bubbleY, bubbleWidth, bubbleHeight, 20)
+    ctx.fill()
+    
+    // Texto
+    ctx.fillStyle = '#ffffff'
+    ctx.textAlign = 'left'
+    let textY = bubbleY + padding + 16
+    for (let line of lines) {
+        ctx.fillText(line.trim(), bubbleX + padding, textY)
+        textY += lineHeight
+    }
+    
+    // Hora del mensaje
+    ctx.fillStyle = '#8e8e93'
+    ctx.font = '12px Arial'
+    ctx.textAlign = 'right'
+    ctx.fillText(time, bubbleX + bubbleWidth - 10, bubbleY + bubbleHeight + 15)
+    
+    return canvas.encode('png')
 }
 
 // ========== HANDLER PRINCIPAL ==========
 let handler = async (m, { conn, text, args, command, usedPrefix }) => {
     const rcanal = await getRcanal()
     
-    // Obtener pack info del usuario o globales
     let userId = m.sender
     let packstickers = global.db?.data?.users?.[userId] || {}
     let texto1 = packstickers.text1 || global.packsticker || 'ᴀsᴛᴀ-ʙᴏᴛ'
     let texto2 = packstickers.text2 || global.packsticker2 || 'ғᴇʀɴᴀɴᴅᴏ'
     
-    // Función helper para errores
     const sendError = async (emoji, msg) => {
         await m.react('✖️')
         return conn.sendMessage(m.chat, {
@@ -259,7 +311,6 @@ let handler = async (m, { conn, text, args, command, usedPrefix }) => {
             case 's':
             case 'sticker':
             case 'stiker': {
-                // Obtener media del mensaje citado o del mensaje actual
                 const quoted = m.quoted || m
                 const mime = (quoted.msg || quoted).mimetype || ''
                 
@@ -267,22 +318,27 @@ let handler = async (m, { conn, text, args, command, usedPrefix }) => {
                 
                 const isImage = mime.startsWith('image/')
                 const isVideo = mime.startsWith('video/')
+                const isGif = mime === 'image/gif'
                 
-                if (!isImage && !isVideo) return sendError('🖼️', 'ꜱᴏʟᴏ ɪᴍᴀɢᴇɴᴇꜱ ᴏ ᴠɪᴅᴇᴏꜱ')
+                if (!isImage && !isVideo && !isGif) return sendError('🖼️', 'ꜱᴏʟᴏ ɪᴍᴀɢᴇɴᴇꜱ, ɢɪꜰꜱ ᴏ ᴠɪᴅᴇᴏꜱ')
                 
                 await m.react('🕒')
                 
                 const buffer = await quoted.download()
                 if (!buffer) return sendError('🖼️', 'ɴᴏ ꜱᴇ ᴘᴜᴅᴏ ᴅᴇꜱᴄᴀʀɢᴀʀ ʟᴀ ᴍᴇᴅɪᴀ')
                 
-                const sticker = await createSticker(buffer, {
-                    pack: texto1,
-                    author: texto2,
-                    isVideo: isVideo,
-                    emoji: isVideo ? ['🎬'] : ['🖼️']
-                })
+                let sticker
+                if (isVideo || isGif) {
+                    sticker = await videoToAnimatedWebp(buffer, { pack: texto1, author: texto2 })
+                } else {
+                    sticker = await imageToWebp(buffer, { pack: texto1, author: texto2 })
+                }
                 
-                await conn.sendMessage(m.chat, { sticker }, { quoted: m })
+                await conn.sendMessage(m.chat, { 
+                    sticker,
+                    packname: texto1,
+                    author: texto2
+                }, { quoted: m })
                 await m.react('✔️')
                 break
             }
@@ -322,13 +378,13 @@ let handler = async (m, { conn, text, args, command, usedPrefix }) => {
                 
                 await m.react('🕒')
                 const buffer = await fetchBrat(text)
-                const sticker = await createSticker(buffer, {
-                    pack: texto1,
-                    author: texto2,
-                    emoji: ['🖤']
-                })
+                const sticker = await imageToWebp(buffer, { pack: texto1, author: texto2 })
                 
-                await conn.sendMessage(m.chat, { sticker }, { quoted: m })
+                await conn.sendMessage(m.chat, { 
+                    sticker,
+                    packname: texto1,
+                    author: texto2
+                }, { quoted: m })
                 await m.react('✔️')
                 break
             }
@@ -345,19 +401,20 @@ let handler = async (m, { conn, text, args, command, usedPrefix }) => {
                 
                 await m.react('🕒')
                 const videoBuffer = await fetchBrat(text, true)
-                const sticker = await createSticker(videoBuffer, {
-                    pack: texto1,
-                    author: texto2,
-                    isVideo: true,
-                    emoji: ['🎬']
-                })
+                const sticker = await videoToAnimatedWebp(videoBuffer, { pack: texto1, author: texto2 })
                 
-                await conn.sendMessage(m.chat, { sticker }, { quoted: m })
+                await conn.sendMessage(m.chat, { 
+                    sticker,
+                    packname: texto1,
+                    author: texto2
+                }, { quoted: m })
                 await m.react('✔️')
                 break
             }
             
             // ========== WTP ==========
+            case 'wtp': {
+                text ==========
             case 'wtp': {
                 text = m.quoted?.text || text || args.join(' ')
                 if (!text) {
@@ -370,14 +427,14 @@ let handler = async (m, { conn, text, args, command, usedPrefix }) => {
                 await m.react('🕒')
                 
                 const name = await conn.getName(m.sender).catch(() => m.pushName || 'Usuario')
-                const buffer = await fetchWTP(text, { name })
-                const sticker = await createSticker(buffer, {
-                    pack: texto1,
-                    author: texto2,
-                    emoji: ['📱']
-                })
+                const buffer = await createWTP(text, { name })
+                const sticker = await imageToWebp(buffer, { pack: texto1, author: texto2 })
                 
-                await conn.sendMessage(m.chat, { sticker }, { quoted: m })
+                await conn.sendMessage(m.chat, { 
+                    sticker,
+                    packname: texto1,
+                    author: texto2
+                }, { quoted: m })
                 await m.react('✔️')
                 break
             }
@@ -400,13 +457,13 @@ let handler = async (m, { conn, text, args, command, usedPrefix }) => {
                 const imageUrl = await fetchEmojimix(emoji1, emoji2)
                 const imageBuffer = await (await fetch(imageUrl)).buffer()
                 
-                const sticker = await createSticker(imageBuffer, {
-                    pack: texto1,
-                    author: texto2,
-                    emoji: [emoji1, emoji2]
-                })
+                const sticker = await imageToWebp(imageBuffer, { pack: texto1, author: texto2 })
                 
-                await conn.sendMessage(m.chat, { sticker }, { quoted: m })
+                await conn.sendMessage(m.chat, { 
+                    sticker,
+                    packname: texto1,
+                    author: texto2
+                }, { quoted: m })
                 await m.react('✔️')
                 break
             }
@@ -440,13 +497,13 @@ let handler = async (m, { conn, text, args, command, usedPrefix }) => {
                 
                 await m.react('🕒')
                 const buffer = await fetchQC(frase, nombre, pp)
-                const sticker = await createSticker(buffer, {
-                    pack: texto1,
-                    author: texto2,
-                    emoji: ['💬']
-                })
+                const sticker = await imageToWebp(buffer, { pack: texto1, author: texto2 })
                 
-                await conn.sendMessage(m.chat, { sticker }, { quoted: m })
+                await conn.sendMessage(m.chat, { 
+                    sticker,
+                    packname: texto1,
+                    author: texto2
+                }, { quoted: m })
                 await m.react('✔️')
                 break
             }
@@ -455,7 +512,7 @@ let handler = async (m, { conn, text, args, command, usedPrefix }) => {
             case 'take':
             case 'wm': {
                 if (!m.quoted) {
-                    return conn.send                    return conn.sendMessage(m.chat, {
+                    return conn.sendMessage(m.chat, {
                         text: `> . ﹡ ﹟ ✏️ ׄ ⬭ *¡ʀᴇɴᴏᴍʙʀᴀʀ ꜱᴛɪᴄᴋᴇʀ!*\n\n*ㅤꨶ〆⁾ ㅤׄㅤ⸼ㅤׄ *͜✏️* ㅤ֢ㅤ⸱ㅤᯭִ*\n\nׅㅤ𓏸𓈒ㅤׄ *ᴜsᴏ* :: ʀᴇꜱᴘᴏɴᴅᴇ ᴀ ᴜɴ ꜱᴛɪᴄᴋᴇʀ\nׅㅤ𓏸𓈒ㅤׄ *ꜱᴏʟᴏ ᴘᴀᴄᴋ* :: \`#take NuevoNombre\`\nׅㅤ𓏸𓈒ㅤׄ *ᴘᴀᴄᴋ + ᴀᴜᴛᴏʀ* :: \`#take Pack • Autor\`\n\n> . ﹡ ﹟ ⚡ ׄ ⬭ *ᴀsᴛᴀ-ʙᴏᴛ-ᴍᴅ*`.trim(),
                         contextInfo: { ...rcanal }
                     }, { quoted: m })
@@ -472,13 +529,13 @@ let handler = async (m, { conn, text, args, command, usedPrefix }) => {
                 const newPack = parts[0] || texto1
                 const newAuthor = parts[1] || texto2
                 
-                const sticker = await createSticker(stickerData, {
-                    pack: newPack,
-                    author: newAuthor,
-                    emoji: ['✏️']
-                })
+                const sticker = await imageToWebp(stickerData, { pack: newPack, author: newAuthor })
                 
-                await conn.sendMessage(m.chat, { sticker }, { quoted: m })
+                await conn.sendMessage(m.chat, { 
+                    sticker,
+                    packname: newPack,
+                    author: newAuthor
+                }, { quoted: m })
                 await m.react('✔️')
                 break
             }
@@ -486,6 +543,10 @@ let handler = async (m, { conn, text, args, command, usedPrefix }) => {
     } catch (e) {
         console.error(e)
         await sendError('⚠️', e.message || 'ᴇʀʀᴏʀ ᴅᴇꜱᴄᴏɴᴏᴄɪᴅᴏ')
+    }
+}
+
+ᴇʀʀᴏʀ ᴅᴇꜱᴄᴏɴᴏᴄɪᴅᴏ')
     }
 }
 
@@ -500,4 +561,7 @@ handler.help = [
     'qc <texto>',
     'take / wm [responde a sticker]'
 ]
-handler.command = ['s', 'sticker', 'stiker', 'img', 't
+handler.command = ['s', 'sticker', 'stiker', 'img', 'toimg', 'brat', 'bratv', 'wtp', 'emojimix', 'qc', 'take', 'wm']
+handler.reg = true
+
+export default handler

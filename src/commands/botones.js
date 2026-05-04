@@ -1,7 +1,9 @@
 // plugins/botones.js
-// CORREGIDO - Usa proto.Message como serbot.js
+// CORREGIDO - Usa default import como serbot.js
 
-import { proto, generateWAMessageFromContent, WA_DEFAULT_EPHEMERAL } from '@whiskeysockets/baileys'
+import pkg from '@whiskeysockets/baileys'
+
+const { proto, generateWAMessageFromContent, WA_DEFAULT_EPHEMERAL } = pkg
 
 let handler = async (m, { conn, usedPrefix }) => {
     

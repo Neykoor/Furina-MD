@@ -7,6 +7,5 @@ let handler = async (m, { conn, args }) => {
 handler.tags = ['tools']
 handler.help = ['readmore']
 handler.command = ['readmore', 'rm', 'leermas']
-handler.register = true
 
 export default handler

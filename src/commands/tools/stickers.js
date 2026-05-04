@@ -1,6 +1,4 @@
-// Guardar pack personalizado del usuario
-
-let handler = async (m, { conn, text, args, command, usedPrefix }) => {
+let handler = async (m, { conn, text, command, usedPrefix }) => {
     const userId = m.sender
     
     if (!global.db.data.users[userId]) global.db.data.users[userId] = {}

@@ -1,59 +1,68 @@
-import { getOrCreateUser, formatMoney, getExpNeeded } from '../../../lib/users.js'
+import { getOrCreateUser, formatMoney } from '../../../lib/users.js'
+import { getRango, getFormattedStats } from '../../../lib/economy/stats.js'
+import { getEquippedItems, getItem } from '../../../lib/economy/inventory.js'
 
 let handler = async (m, { conn }) => {
     const userId = m.sender.split('@')[0].replace(/\D/g, '')
     const user = getOrCreateUser(userId)
+    const rango = getRango(user.level || 1)
+    const equipped = getEquippedItems(userId)
 
-    const totalMoney = (user.money || 0) + (user.bank || 0)
-    const expNeeded = getExpNeeded(user.level || 1)
-    const displayName = user.profile?.displayName || userId
-    const bio = user.profile?.bio || 'Sin biografía'
+    // Barra de EXP
+    const expNeeded = (user.level || 1) * 150
+    const expCurrent = user.exp || 0
+    const expPct = Math.min(expCurrent / expNeeded, 1)
+    const filled = Math.round(expPct * 10)
+    const empty = 10 - filled
+    const expBar = `[${'█'.repeat(filled)}${'░'.repeat(empty)}]`
 
-    const stats = [
-        `🔨 Trabajos: ${user.workCount || 0}`,
-        `🦹 Crímenes: ${user.crimesSuccess || 0}✅ / ${user.crimesFail || 0}❌`,
-        `🚔 Robos: ${user.robSuccess || 0}✅ / ${user.robFail || 0}❌`,
-        `🔥 Servicios: ${user.slutCount || 0}`
-    ].join(' | ')
+    let txt = `👤 *PERFIL DE ${user.profile?.displayName || user.username}*\n\n`
 
-    const barraExp = '█'.repeat(Math.min(Math.floor((user.exp / expNeeded) * 10), 10)) +
-        '░'.repeat(10 - Math.min(Math.floor((user.exp / expNeeded) * 10), 10))
+    // Info principal
+    txt += `${rango.emoji} *${rango.nombre}*\n`
+    txt += `📈 Nivel: *${user.level || 1}*\n`
+    txt += `✨ EXP: ${expBar} ${expCurrent}/${expNeeded}\n\n`
 
-    const txt = [
-        `👤 *PERFIL DE @${userId}*`,
-        ``,
-        `📛 *Nombre:* ${displayName}`,
-        `📱 *Número:* +${userId}`,
-        `💬 *Bio:* ${bio}`,
-        ``,
-        `💰 *Economía*`,
-        `💵 Efectivo: ${formatMoney(user.money)}`,
-        `🏦 Banco: ${formatMoney(user.bank)}`,
-        `💎 Total: ${formatMoney(totalMoney)}`,
-        ``,
-        `⭐ *Nivel:* ${user.level || 1}`,
-        `✨ *EXP:* ${user.exp || 0}/${expNeeded}`,
-        `${barraExp}`,
-        ``,
-        `📊 *Estadísticas*`,
-        stats,
-        ``,
-        `📅 Registro: ${user.createdAt ? new Date(user.createdAt).toLocaleDateString('es-MX') : 'N/A'}`
-    ].join('\n')
+    // Economía
+    txt += `💰 *ECONOMÍA*\n`
+    txt += `💵 Dinero: ${formatMoney(user.money || 0)}\n`
+    txt += `🏦 Banco: ${formatMoney(user.bank || 0)}\n`
+    txt += `💎 Total: ${formatMoney((user.money || 0) + (user.bank || 0))}\n\n`
 
-    try {
-        const pp = await conn.profilePictureUrl(m.sender, 'image').catch(() => null)
-        if (pp) {
-            await conn.sendMessage(m.chat, { image: { url: pp }, caption: txt, mentions: [m.sender] }, { quoted: m })
-        } else {
-            await conn.sendMessage(m.chat, { text: txt, mentions: [m.sender] }, { quoted: m })
+    // Equipamiento
+    const equipadosList = Object.values(equipped)
+    if (equipadosList.length > 0) {
+        txt += `⚔️ *EQUIPADO:*\n`
+        for (const data of equipadosList) {
+            const item = getItem(data.id)
+            const dur = data.durabilidad ? ` [${data.durabilidad}⚡]` : ''
+            txt += `  ${item?.emoji || '•'} ${item?.nombre || data.id}${dur}\n`
         }
-    } catch {
-        await conn.sendMessage(m.chat, { text: txt, mentions: [m.sender] }, { quoted: m })
+        txt += `\n`
     }
+
+    // Títulos
+    if (user.titulos && user.titulos.length > 0) {
+        txt += `🏅 *TÍTULOS:* ${user.titulos.join(', ')}\n\n`
+    }
+
+    // Stats rápidas
+    const stats = user.stats || {}
+    txt += `📊 *ACTIVIDADES*\n`
+    txt += `⛏️ Minas: ${stats.minar?.count || 0} | 🎣 Pescas: ${stats.pescar?.count || 0}\n`
+    txt += `🏹 Cazas: ${stats.cazar?.count || 0} | 🌿 Recolectas: ${stats.recolectar?.count || 0}\n`
+    txt += `💼 Trabajos: ${stats.trabajar?.count || 0} | 🔨 Crafts: ${stats.craftear?.count || 0}\n`
+    txt += `💵 Ventas: ${stats.vender?.count || 0} | ⚔️ Combates: ${(stats.combate?.wins || 0) + (stats.combate?.losses || 0)}\n\n`
+
+    // Inventario resumen
+    const invCount = Object.keys(user.inventory || {}).length
+    txt += `🎒 *Inventario:* ${invCount} items diferentes\n`
+    txt += `💡 Usa #inventario para ver detalles`
+
+    await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
 }
 
 handler.help = ['perfil', 'profile']
-handler.tags = ['economy']
-handler.command = ['perfil', 'profile', 'miperfil', 'myprofile']
+handler.tags = ['economy', 'rpg']
+handler.command = ['perfil', 'profile', 'stats', 'estadisticas']
 export default handler

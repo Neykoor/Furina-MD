@@ -1,4 +1,7 @@
 import { getOrCreateUser, updateUser, addExp, checkCooldown, formatMoney } from '../../../lib/users.js'
+import { getEquipmentBonus } from '../../../lib/economy/inventory.js'
+import { updateMissionProgress } from '../../../lib/economy/missions.js'
+import { updateStats, getRango } from '../../../lib/economy/stats.js'
 
 const trabajos = [
     { nombre: '👨‍💻 Programador', min: 200, max: 800, exp: 15 },
@@ -8,34 +11,60 @@ const trabajos = [
     { nombre: '📦 Repartidor', min: 120, max: 450, exp: 8 },
     { nombre: '🎵 Músico', min: 180, max: 700, exp: 14 },
     { nombre: '🏗️ Constructor', min: 160, max: 650, exp: 13 },
-    { nombre: '📚 Profesor', min: 220, max: 750, exp: 16 }
+    { nombre: '📚 Profesor', min: 220, max: 750, exp: 16 },
+    { nombre: '⚔️ Guardia Real', min: 300, max: 1000, exp: 20 },
+    { nombre: '🔮 Alquimista', min: 350, max: 1200, exp: 25 },
+    { nombre: '🏴‍☠️ Capitán Pirata', min: 400, max: 1500, exp: 30 },
+    { nombre: '👑 Consejero Real', min: 500, max: 2000, exp: 35 },
 ]
 
 let handler = async (m, { conn }) => {
     const userId = m.sender.split('@')[0].replace(/\D/g, '')
     const user = getOrCreateUser(userId)
 
-    const cooldown = checkCooldown(user, 'lastWork', 15)
+    const cooldown = checkCooldown(user, 'lastWork', 10)
     if (!cooldown.ready) return conn.reply(m.chat, `⏳ *Estás cansado*\n\nDescansa *${cooldown.remaining}* minutos más`, m)
 
-    const trabajo = trabajos[Math.floor(Math.random() * trabajos.length)]
+    // Bonus de equipamiento
+    const equipBonus = getEquipmentBonus(userId)
+    const rango = getRango(user.level || 1)
+
+    // Trabajos desbloqueados por nivel
+    const trabajosDisponibles = trabajos.filter((t, i) => {
+        const nivelReq = Math.floor(i / 2) * 5 + 1
+        return (user.level || 1) >= nivelReq
+    })
+
+    const trabajo = trabajosDisponibles[Math.floor(Math.random() * trabajosDisponibles.length)]
     const ganancia = Math.floor(Math.random() * (trabajo.max - trabajo.min + 1)) + trabajo.min
     const bonusNivel = Math.floor(ganancia * ((user.level || 1) * 0.05))
-    const total = ganancia + bonusNivel
+    const bonusRango = Math.floor(ganancia * (rango.nivel * 0.01))
+    const bonusEquip = Math.floor(ganancia * ((equipBonus.money || 1) - 1))
+    const total = ganancia + bonusNivel + bonusRango + bonusEquip
 
     const newMoney = (user.money || 0) + total
     const workCount = (user.workCount || 0) + 1
 
     updateUser(userId, { money: newMoney, lastWork: Date.now(), workCount })
 
-    const expResult = addExp(userId, trabajo.exp)
+    const expTotal = Math.floor(trabajo.exp * (equipBonus.exp_bonus || 1))
+    const expResult = addExp(userId, expTotal)
 
-    let txt = `💼 *TRABAJASTE COMO ${trabajo.nombre}*\n\n` +
-        `💰 *Ganancia:* ${formatMoney(ganancia)}\n` +
-        `📈 *Bonus nivel:* +${formatMoney(bonusNivel)}\n` +
-        `✨ *EXP:* +${trabajo.exp}\n` +
-        `🔨 *Trabajos:* ${workCount}\n\n` +
-        `💵 *Balance:* ${formatMoney(newMoney)}`
+    // Stats y misiones
+    updateStats(userId, 'trabajar', { money: total })
+    updateMissionProgress(userId, 'trabajar', 1)
+    updateMissionProgress(userId, 'ganar_dinero', total)
+
+    let txt = `💼 *TRABAJASTE COMO ${trabajo.nombre}*\n\n`
+    txt += `💰 *Ganancia base:* ${formatMoney(ganancia)}\n`
+    if (bonusNivel > 0) txt += `📈 *Bonus nivel:* +${formatMoney(bonusNivel)}\n`
+    if (bonusRango > 0) txt += `${rango.emoji} *Bonus ${rango.nombre}:* +${formatMoney(bonusRango)}\n`
+    if (bonusEquip > 0) txt += `⚡ *Bonus equipamiento:* +${formatMoney(bonusEquip)}\n`
+    txt += `━━━━━━━━━━━━━━\n`
+    txt += `💵 *Total ganado:* ${formatMoney(total)}\n`
+    txt += `✨ *EXP:* +${expTotal}\n`
+    txt += `🔨 *Trabajos totales:* ${workCount}\n\n`
+    txt += `💵 *Balance:* ${formatMoney(newMoney)}`
 
     if (expResult.leveledUp) txt += `\n\n🎉 *¡SUBISTE AL NIVEL ${expResult.level}!*`
 
@@ -43,6 +72,6 @@ let handler = async (m, { conn }) => {
 }
 
 handler.help = ['work', 'trabajar']
-handler.tags = ['economy']
+handler.tags = ['economy', 'rpg']
 handler.command = ['work', 'trabajar', 'job']
 export default handler

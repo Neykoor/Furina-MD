@@ -10,7 +10,7 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 
     let txt = `╔══════════════════════╗
 `
-    txt += `║    💰 *ECONOMÍA RPG*    ║
+    txt += `║    💰 *ECONOMIA RPG*    ║
 `
     txt += `╚══════════════════════╝
 
@@ -53,7 +53,7 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 
 `
 
-    txt += `🔨 *CRAFT Y GESTIÓN*
+    txt += `🔨 *CRAFT Y GESTION*
 `
     txt += `  ${prefix}craft - Ver recetas de crafteo
 `
@@ -71,7 +71,7 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 
 `
 
-    txt += `📋 *PROGRESIÓN*
+    txt += `📋 *PROGRESION*
 `
     txt += `  ${prefix}perfil - Ver perfil RPG completo
 `
@@ -99,7 +99,7 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 
     txt += `🎰 *CASINO*
 `
-    txt += `  ${prefix}juegos - Menú de juegos
+    txt += `  ${prefix}juegos - Menu de juegos
 `
     txt += `  ${prefix}ruleta <cantidad> - Ruleta rusa (2x)
 `
@@ -113,7 +113,7 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 
 `
 
-    txt += `📝 *${prefix}menu* - Menú principal`
+    txt += `📝 *${prefix}menu* - Menu principal`
 
     try {
         if (logoEco && logoEco.startsWith('http')) {

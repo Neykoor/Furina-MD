@@ -9,12 +9,12 @@ const trabajos = [
     { nombre: '🚕 Conductor', min: 100, max: 500, exp: 10 },
     { nombre: '🎨 Diseñador', min: 250, max: 900, exp: 18 },
     { nombre: '📦 Repartidor', min: 120, max: 450, exp: 8 },
-    { nombre: '🎵 Músico', min: 180, max: 700, exp: 14 },
+    { nombre: '🎵 Musico', min: 180, max: 700, exp: 14 },
     { nombre: '🏗️ Constructor', min: 160, max: 650, exp: 13 },
     { nombre: '📚 Profesor', min: 220, max: 750, exp: 16 },
     { nombre: '⚔️ Guardia Real', min: 300, max: 1000, exp: 20 },
     { nombre: '🔮 Alquimista', min: 350, max: 1200, exp: 25 },
-    { nombre: '🏴‍☠️ Capitán Pirata', min: 400, max: 1500, exp: 30 },
+    { nombre: '🏴‍☠️ Capitan Pirata', min: 400, max: 1500, exp: 30 },
     { nombre: '👑 Consejero Real', min: 500, max: 2000, exp: 35 },
 ]
 
@@ -23,13 +23,13 @@ let handler = async (m, { conn }) => {
     const user = getOrCreateUser(userId)
 
     const cooldown = checkCooldown(user, 'lastWork', 10)
-    if (!cooldown.ready) return conn.reply(m.chat, `⏳ *Estás cansado*\n\nDescansa *${cooldown.remaining}* minutos más`, m)
+    if (!cooldown.ready) return conn.reply(m.chat, `⏳ *Estas cansado*
 
-    // Bonus de equipamiento
+Descansa *${cooldown.remaining}* minutos mas`, m)
+
     const equipBonus = getEquipmentBonus(userId)
     const rango = getRango(user.level || 1)
 
-    // Trabajos desbloqueados por nivel
     const trabajosDisponibles = trabajos.filter((t, i) => {
         const nivelReq = Math.floor(i / 2) * 5 + 1
         return (user.level || 1) >= nivelReq
@@ -50,23 +50,35 @@ let handler = async (m, { conn }) => {
     const expTotal = Math.floor(trabajo.exp * (equipBonus.exp_bonus || 1))
     const expResult = addExp(userId, expTotal)
 
-    // Stats y misiones
     updateStats(userId, 'trabajar', { money: total })
     updateMissionProgress(userId, 'trabajar', 1)
     updateMissionProgress(userId, 'ganar_dinero', total)
 
-    let txt = `💼 *TRABAJASTE COMO ${trabajo.nombre}*\n\n`
-    txt += `💰 *Ganancia base:* ${formatMoney(ganancia)}\n`
-    if (bonusNivel > 0) txt += `📈 *Bonus nivel:* +${formatMoney(bonusNivel)}\n`
-    if (bonusRango > 0) txt += `${rango.emoji} *Bonus ${rango.nombre}:* +${formatMoney(bonusRango)}\n`
-    if (bonusEquip > 0) txt += `⚡ *Bonus equipamiento:* +${formatMoney(bonusEquip)}\n`
-    txt += `━━━━━━━━━━━━━━\n`
-    txt += `💵 *Total ganado:* ${formatMoney(total)}\n`
-    txt += `✨ *EXP:* +${expTotal}\n`
-    txt += `🔨 *Trabajos totales:* ${workCount}\n\n`
+    let txt = `💼 *TRABAJASTE COMO ${trabajo.nombre}*
+
+`
+    txt += `💰 *Ganancia base:* ${formatMoney(ganancia)}
+`
+    if (bonusNivel > 0) txt += `📈 *Bonus nivel:* +${formatMoney(bonusNivel)}
+`
+    if (bonusRango > 0) txt += `${rango.emoji} *Bonus ${rango.nombre}:* +${formatMoney(bonusRango)}
+`
+    if (bonusEquip > 0) txt += `⚡ *Bonus equipamiento:* +${formatMoney(bonusEquip)}
+`
+    txt += `━━━━━━━━━━━━━━
+`
+    txt += `💵 *Total ganado:* ${formatMoney(total)}
+`
+    txt += `✨ *EXP:* +${expTotal}
+`
+    txt += `🔨 *Trabajos totales:* ${workCount}
+
+`
     txt += `💵 *Balance:* ${formatMoney(newMoney)}`
 
-    if (expResult.leveledUp) txt += `\n\n🎉 *¡SUBISTE AL NIVEL ${expResult.level}!*`
+    if (expResult.leveledUp) txt += `
+
+🎉 *¡SUBISTE AL NIVEL ${expResult.level}!*`
 
     await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
 }

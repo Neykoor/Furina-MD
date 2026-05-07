@@ -9,12 +9,13 @@ let handler = async (m, { conn }) => {
     const user = getOrCreateUser(userId)
 
     const cooldown = checkCooldown(user, 'lastCollect', 3)
-    if (!cooldown.ready) return conn.reply(m.chat, `🌿 *Recolección en enfriamiento*\n\nEspera *${cooldown.remaining}* minutos más`, m)
+    if (!cooldown.ready) return conn.reply(m.chat, `🌿 *Recoleccion en enfriamiento*
+
+Espera *${cooldown.remaining}* minutos mas`, m)
 
     const equipBonus = getEquipmentBonus(userId)
     const luckBonus = equipBonus.luck || 1
 
-    // Cantidad base (más que minería/pesca porque es más común)
     const cantidadBase = Math.floor(Math.random() * 5) + 2 + Math.floor((user.level || 1) / 8)
     const cantidad = Math.floor(cantidadBase)
 
@@ -22,7 +23,9 @@ let handler = async (m, { conn }) => {
 
     if ((user.level || 1) < material.nivel) {
         const safeMaterial = Object.values(MATERIALES).find(m => m.nivel === 1 && m.probabilidad >= 35)
-        return conn.reply(m.chat, `🌿 *Recolectaste pero no encontraste nada especial...*\n\nNecesitas nivel ${material.nivel} para ${material.nombre}`, m)
+        return conn.reply(m.chat, `🌿 *Recolectaste pero no encontraste nada especial...*
+
+Necesitas nivel ${material.nivel} para ${material.nombre}`, m)
     }
 
     const bonusNivel = Math.floor(material.valor * ((user.level || 1) * 0.02))
@@ -42,16 +45,27 @@ let handler = async (m, { conn }) => {
     const rarezaInfo = { comun: '⚪', poco_comun: '🟢', raro: '🔵', epico: '🟣', legendario: '🟡', mitico: '🔴' }
     const rarezaEmoji = rarezaInfo[material.rareza] || '⚪'
 
-    let txt = `🌿 *¡RECOLECCIÓN EXITOSA!*\n\n`
-    txt += `${material.emoji} *${material.nombre}* ${rarezaEmoji}\n`
-    txt += `📦 Cantidad: *${cantidad}*\n`
-    txt += `💎 Rareza: *${formatRareza(material.rareza)}*\n`
-    txt += `💰 Valor: *${formatMoney(valorTotal)}*\n`
-    txt += `✨ EXP: *+${expTotal}*\n`
-    if (bonusNivel > 0) txt += `📈 Bonus nivel: *+${formatMoney(bonusNivel * cantidad)}*\n`
-    txt += `\n💵 *Balance:* ${formatMoney(newMoney)}`
+    let txt = `🌿 *¡RECOLECCION EXITOSA!*
 
-    if (expResult.leveledUp) txt += `\n\n🎉 *¡SUBISTE AL NIVEL ${expResult.level}!*`
+`
+    txt += `${material.emoji} *${material.nombre}* ${rarezaEmoji}
+`
+    txt += `📦 Cantidad: *${cantidad}*
+`
+    txt += `💎 Rareza: *${formatRareza(material.rareza)}*
+`
+    txt += `💰 Valor: *${formatMoney(valorTotal)}*
+`
+    txt += `✨ EXP: *+${expTotal}*
+`
+    if (bonusNivel > 0) txt += `📈 Bonus nivel: *+${formatMoney(bonusNivel * cantidad)}*
+`
+    txt += `
+💵 *Balance:* ${formatMoney(newMoney)}`
+
+    if (expResult.leveledUp) txt += `
+
+🎉 *¡SUBISTE AL NIVEL ${expResult.level}!*`
 
     await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
 }

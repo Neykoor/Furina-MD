@@ -9,25 +9,27 @@ let handler = async (m, { conn }) => {
     const user = getOrCreateUser(userId)
 
     const cooldown = checkCooldown(user, 'lastFish', 5)
-    if (!cooldown.ready) return conn.reply(m.chat, `🎣 *Caña en enfriamiento*\n\nEspera *${cooldown.remaining}* minutos más`, m)
+    if (!cooldown.ready) return conn.reply(m.chat, `🎣 *Caña en enfriamiento*
+
+Espera *${cooldown.remaining}* minutos mas`, m)
 
     const equipBonus = getEquipmentBonus(userId)
     const luckBonus = equipBonus.luck || 1
     const fishingBonus = equipBonus.pesca || 1
 
-    // Cantidad base
     const cantidadBase = Math.floor(Math.random() * 2) + 1 + Math.floor((user.level || 1) / 12)
     const cantidad = Math.floor(cantidadBase * fishingBonus)
 
-    // Roll de pez
     const pez = rollItem(PECES, luckBonus)
 
     if ((user.level || 1) < pez.nivel) {
-        return conn.reply(m.chat, `🎣 *Pescaste pero no atrapaste nada especial...*\n\nNecesitas nivel ${pez.nivel} para pescar ${pez.nombre}\n💡 Sigue pescando para subir de nivel`, m)
+        return conn.reply(m.chat, `🎣 *Pescaste pero no atrapaste nada especial...*
+
+Necesitas nivel ${pez.nivel} para pescar ${pez.nombre}
+💡 Sigue pescando para subir de nivel`, m)
     }
 
-    // Usar durabilidad de caña
-    const equipped = Object.entries(user.inventory || {}).find(([id, data]) => data.equipado && getItem(id)?.tipo === 'herramienta' && (id.includes('caña') || id.includes('cana')))
+    const equipped = Object.entries(user.inventory || {}).find(([id, data]) => data.equipado && getItem(id)?.tipo === 'herramienta' && (id.includes('cana') || id.includes('caña')))
     let toolBroken = false
     if (equipped) {
         const durResult = useDurability(userId, equipped[0], 1)
@@ -55,18 +57,31 @@ let handler = async (m, { conn }) => {
     const rarezaInfo = { comun: '⚪', poco_comun: '🟢', raro: '🔵', epico: '🟣', legendario: '🟡', mitico: '🔴' }
     const rarezaEmoji = rarezaInfo[pez.rareza] || '⚪'
 
-    let txt = `🎣 *¡PESCASTE CON ÉXITO!*\n\n`
-    txt += `${pez.emoji} *${pez.nombre}* ${rarezaEmoji}\n`
-    txt += `📦 Cantidad: *${cantidad}*\n`
-    txt += `💎 Rareza: *${formatRareza(pez.rareza)}*\n`
-    txt += `💰 Valor: *${formatMoney(valorTotal)}*\n`
-    txt += `✨ EXP: *+${expTotal}*\n`
-    if (bonusNivel > 0) txt += `📈 Bonus nivel: *+${formatMoney(bonusNivel * cantidad)}*\n`
-    if (equipBonus.pesca > 1) txt += `🎣 Bonus caña: *x${equipBonus.pesca.toFixed(1)}*\n`
-    if (toolBroken) txt += `💔 ¡Tu caña se rompió!\n`
-    txt += `\n💵 *Balance:* ${formatMoney(newMoney)}`
+    let txt = `🎣 *¡PESCASTE CON EXITO!*
 
-    if (expResult.leveledUp) txt += `\n\n🎉 *¡SUBISTE AL NIVEL ${expResult.level}!*`
+`
+    txt += `${pez.emoji} *${pez.nombre}* ${rarezaEmoji}
+`
+    txt += `📦 Cantidad: *${cantidad}*
+`
+    txt += `💎 Rareza: *${formatRareza(pez.rareza)}*
+`
+    txt += `💰 Valor: *${formatMoney(valorTotal)}*
+`
+    txt += `✨ EXP: *+${expTotal}*
+`
+    if (bonusNivel > 0) txt += `📈 Bonus nivel: *+${formatMoney(bonusNivel * cantidad)}*
+`
+    if (equipBonus.pesca > 1) txt += `🎣 Bonus caña: *x${equipBonus.pesca.toFixed(1)}*
+`
+    if (toolBroken) txt += `💔 ¡Tu caña se rompio!
+`
+    txt += `
+💵 *Balance:* ${formatMoney(newMoney)}`
+
+    if (expResult.leveledUp) txt += `
+
+🎉 *¡SUBISTE AL NIVEL ${expResult.level}!*`
 
     await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
 }

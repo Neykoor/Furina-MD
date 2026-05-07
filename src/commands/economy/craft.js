@@ -8,10 +8,13 @@ let handler = async (m, { conn, args }) => {
     const userId = m.sender.split('@')[0].replace(/\D/g, '')
     const user = getOrCreateUser(userId)
 
-    // Si no hay argumentos, mostrar lista de recetas
     if (!args[0]) {
-        let txt = `🔨 *MESA DE CRAFTEO*\n\n`
-        txt += `Usa: *#craft <nombre>* para craftear\n\n`
+        let txt = `🔨 *MESA DE CRAFTEO*
+
+`
+        txt += `Usa: *#craft <nombre>* para craftear
+
+`
 
         const categorias = {
             herramienta: '🔧 Herramientas',
@@ -25,7 +28,8 @@ let handler = async (m, { conn, args }) => {
             const recetas = Object.values(RECETAS_CRAFTEO).filter(r => r.tipo === tipo)
             if (recetas.length === 0) continue
 
-            txt += `\n${nombre}:
+            txt += `
+${nombre}:
 `
             for (const receta of recetas) {
                 const check = canCraft(userId, receta.id)
@@ -36,16 +40,18 @@ let handler = async (m, { conn, args }) => {
                     return `${item?.emoji || ''}${item?.nombre || id} ${have}/${cant}`
                 }).join(', ')
 
-                txt += `  ${status} *${receta.emoji} ${receta.nombre}* (Nv.${receta.nivel})\n`
-                txt += `     └ ${reqs}\n`
+                txt += `  ${status} *${receta.emoji} ${receta.nombre}* (Nv.${receta.nivel})
+`
+                txt += `     └ ${reqs}
+`
             }
         }
 
-        txt += `\n💡 Escribe *#craft <nombre>* para intentar craftear`
+        txt += `
+💡 Escribe *#craft <nombre>* para intentar craftear`
         return conn.reply(m.chat, txt, m)
     }
 
-    // Buscar receta por nombre
     const search = args.join(' ').toLowerCase()
     const recetaId = Object.keys(RECETAS_CRAFTEO).find(id => 
         RECETAS_CRAFTEO[id].nombre.toLowerCase().includes(search) ||
@@ -58,50 +64,62 @@ let handler = async (m, { conn, args }) => {
 
     const receta = RECETAS_CRAFTEO[recetaId]
 
-    // Verificar nivel
     if ((user.level || 1) < receta.nivel) {
-        return conn.reply(m.chat, `❌ Necesitas nivel ${receta.nivel} para craftear ${receta.nombre}.\nTu nivel actual: ${user.level || 1}`, m)
+        return conn.reply(m.chat, `❌ Necesitas nivel ${receta.nivel} para craftear ${receta.nombre}.
+Tu nivel actual: ${user.level || 1}`, m)
     }
 
-    // Intentar craftear
     const result = craftItem(userId, recetaId)
 
     if (!result.success) {
-        let txt = `❌ *No puedes craftear ${receta.nombre}*\n\n`
+        let txt = `❌ *No puedes craftear ${receta.nombre}*
+
+`
         txt += `Te faltan materiales:
 `
         for (const miss of result.missing || []) {
             const item = getItem(miss.item)
-            txt += `  • ${item?.emoji || ''} ${item?.nombre || miss.item}: ${miss.have}/${miss.need}\n`
+            txt += `  • ${item?.emoji || ''} ${item?.nombre || miss.item}: ${miss.have}/${miss.need}
+`
         }
         return conn.reply(m.chat, txt, m)
     }
 
-    // Éxito
     const expResult = addExp(userId, receta.exp)
 
     updateStats(userId, 'craftear', { item: receta, cantidad: 1 })
     updateMissionProgress(userId, 'craftear', 1)
 
-    let txt = `🔨 *¡CRAFTING EXITOSO!*\n\n`
-    txt += `${receta.emoji} *${receta.nombre}*\n`
-    txt += `✨ EXP: +${receta.exp}\n\n`
-    txt += `📦 *Materiales usados:*\n`
+    let txt = `🔨 *¡CRAFTING EXITOSO!*
+
+`
+    txt += `${receta.emoji} *${receta.nombre}*
+`
+    txt += `✨ EXP: +${receta.exp}
+
+`
+    txt += `📦 *Materiales usados:*
+`
     for (const [id, cant] of Object.entries(result.consumed)) {
         const item = getItem(id)
-        txt += `  • ${item?.emoji || ''} ${item?.nombre || id} x${cant}\n`
+        txt += `  • ${item?.emoji || ''} ${item?.nombre || id} x${cant}
+`
     }
 
     if (receta.bonus) {
-        txt += `\n⚡ *Bonus del item:*\n`
+        txt += `
+⚡ *Bonus del item:*
+`
         for (const [key, val] of Object.entries(receta.bonus)) {
             if (key === 'durabilidad') continue
-            const labels = { mineria: '⛏️ Minería', pesca: '🎣 Pesca', caza: '🏹 Caza', luck: '🍀 Suerte', exp_bonus: '✨ EXP', defensa: '🛡️ Defensa', daño: '⚔️ Daño', charisma: '💎 Carisma' }
-            txt += `  ${labels[key] || key}: ${typeof val === 'number' && val < 10 ? `x${val.toFixed(1)}` : `+${val}`}\n`
+            const labels = { mineria: '⛏️ Mineria', pesca: '🎣 Pesca', caza: '🏹 Caza', luck: '🍀 Suerte', exp_bonus: '✨ EXP', defensa: '🛡️ Defensa', danio: '⚔️ Daño', charisma: '💎 Carisma' }
+            txt += `  ${labels[key] || key}: ${typeof val === 'number' && val < 10 ? `x${val.toFixed(1)}` : `+${val}`}
+`
         }
     }
 
-    if (expResult.leveledUp) txt += `\n🎉 *¡SUBISTE AL NIVEL ${expResult.level}!*`
+    if (expResult.leveledUp) txt += `
+🎉 *¡SUBISTE AL NIVEL ${expResult.level}!*`
 
     await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
 }

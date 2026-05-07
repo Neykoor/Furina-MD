@@ -1,6 +1,7 @@
 import { getOrCreateUser, formatMoney } from '../../../lib/users.js'
-import { getRango, getFormattedStats } from '../../../lib/economy/stats.js'
-import { getEquippedItems, getItem } from '../../../lib/economy/inventory.js'
+import { getRango } from '../../../lib/economy/stats.js'
+import { getEquippedItems } from '../../../lib/economy/inventory.js'
+import { getItem } from '../../../lib/economy/items.js'
 
 let handler = async (m, { conn }) => {
     const userId = m.sender.split('@')[0].replace(/\D/g, '')
@@ -8,7 +9,6 @@ let handler = async (m, { conn }) => {
     const rango = getRango(user.level || 1)
     const equipped = getEquippedItems(userId)
 
-    // Barra de EXP
     const expNeeded = (user.level || 1) * 150
     const expCurrent = user.exp || 0
     const expPct = Math.min(expCurrent / expNeeded, 1)
@@ -16,47 +16,64 @@ let handler = async (m, { conn }) => {
     const empty = 10 - filled
     const expBar = `[${'█'.repeat(filled)}${'░'.repeat(empty)}]`
 
-    let txt = `👤 *PERFIL DE ${user.profile?.displayName || user.username}*\n\n`
+    let txt = `👤 *PERFIL DE ${user.profile?.displayName || user.username}*
 
-    // Info principal
-    txt += `${rango.emoji} *${rango.nombre}*\n`
-    txt += `📈 Nivel: *${user.level || 1}*\n`
-    txt += `✨ EXP: ${expBar} ${expCurrent}/${expNeeded}\n\n`
+`
 
-    // Economía
-    txt += `💰 *ECONOMÍA*\n`
-    txt += `💵 Dinero: ${formatMoney(user.money || 0)}\n`
-    txt += `🏦 Banco: ${formatMoney(user.bank || 0)}\n`
-    txt += `💎 Total: ${formatMoney((user.money || 0) + (user.bank || 0))}\n\n`
+    txt += `${rango.emoji} *${rango.nombre}*
+`
+    txt += `📈 Nivel: *${user.level || 1}*
+`
+    txt += `✨ EXP: ${expBar} ${expCurrent}/${expNeeded}
 
-    // Equipamiento
+`
+
+    txt += `💰 *ECONOMIA*
+`
+    txt += `💵 Dinero: ${formatMoney(user.money || 0)}
+`
+    txt += `🏦 Banco: ${formatMoney(user.bank || 0)}
+`
+    txt += `💎 Total: ${formatMoney((user.money || 0) + (user.bank || 0))}
+
+`
+
     const equipadosList = Object.values(equipped)
     if (equipadosList.length > 0) {
-        txt += `⚔️ *EQUIPADO:*\n`
+        txt += `⚔️ *EQUIPADO:*
+`
         for (const data of equipadosList) {
             const item = getItem(data.id)
             const dur = data.durabilidad ? ` [${data.durabilidad}⚡]` : ''
-            txt += `  ${item?.emoji || '•'} ${item?.nombre || data.id}${dur}\n`
+            txt += `  ${item?.emoji || '•'} ${item?.nombre || data.id}${dur}
+`
         }
-        txt += `\n`
+        txt += `
+`
     }
 
-    // Títulos
     if (user.titulos && user.titulos.length > 0) {
-        txt += `🏅 *TÍTULOS:* ${user.titulos.join(', ')}\n\n`
+        txt += `🏅 *TITULOS:* ${user.titulos.join(', ')}
+
+`
     }
 
-    // Stats rápidas
     const stats = user.stats || {}
-    txt += `📊 *ACTIVIDADES*\n`
-    txt += `⛏️ Minas: ${stats.minar?.count || 0} | 🎣 Pescas: ${stats.pescar?.count || 0}\n`
-    txt += `🏹 Cazas: ${stats.cazar?.count || 0} | 🌿 Recolectas: ${stats.recolectar?.count || 0}\n`
-    txt += `💼 Trabajos: ${stats.trabajar?.count || 0} | 🔨 Crafts: ${stats.craftear?.count || 0}\n`
-    txt += `💵 Ventas: ${stats.vender?.count || 0} | ⚔️ Combates: ${(stats.combate?.wins || 0) + (stats.combate?.losses || 0)}\n\n`
+    txt += `📊 *ACTIVIDADES*
+`
+    txt += `⛏️ Minas: ${stats.minar?.count || 0} | 🎣 Pescas: ${stats.pescar?.count || 0}
+`
+    txt += `🏹 Cazas: ${stats.cazar?.count || 0} | 🌿 Recolectas: ${stats.recolectar?.count || 0}
+`
+    txt += `💼 Trabajos: ${stats.trabajar?.count || 0} | 🔨 Crafts: ${stats.craftear?.count || 0}
+`
+    txt += `💵 Ventas: ${stats.vender?.count || 0} | ⚔️ Combates: ${(stats.combate?.wins || 0) + (stats.combate?.losses || 0)}
 
-    // Inventario resumen
+`
+
     const invCount = Object.keys(user.inventory || {}).length
-    txt += `🎒 *Inventario:* ${invCount} items diferentes\n`
+    txt += `🎒 *Inventario:* ${invCount} items diferentes
+`
     txt += `💡 Usa #inventario para ver detalles`
 
     await conn.sendMessage(m.chat, { text: txt }, { quoted: m })

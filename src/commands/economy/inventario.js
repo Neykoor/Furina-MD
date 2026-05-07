@@ -6,7 +6,6 @@ let handler = async (m, { conn, args }) => {
     const userId = m.sender.split('@')[0].replace(/\D/g, '')
     const user = getOrCreateUser(userId)
 
-    // Si hay argumentos, intentar equipar/desequipar
     if (args[0]) {
         const action = args[0].toLowerCase()
         const itemName = args.slice(1).join(' ').toLowerCase()
@@ -22,11 +21,15 @@ let handler = async (m, { conn, args }) => {
             const result = equipItem(userId, itemId)
             if (!result.success) return conn.reply(m.chat, `❌ ${result.error}`, m)
 
-            let txt = `⚔️ *ITEM EQUIPADO*\n\n`
-            txt += `${result.item.emoji} *${result.item.nombre}*\n`
+            let txt = `⚔️ *ITEM EQUIPADO*
+
+`
+            txt += `${result.item.emoji} *${result.item.nombre}*
+`
             if (result.previous) {
                 const prev = getItem(result.previous)
-                txt += `\n📤 Desequipado: ${prev?.emoji || ''} ${prev?.nombre || result.previous}`
+                txt += `
+📤 Desequipado: ${prev?.emoji || ''} ${prev?.nombre || result.previous}`
             }
             return conn.reply(m.chat, txt, m)
         }
@@ -41,44 +44,58 @@ let handler = async (m, { conn, args }) => {
 
             unequipItem(userId, itemId)
             const item = getItem(itemId)
-            return conn.reply(m.chat, `📤 *DESEQUIPADO*\n\n${item?.emoji || ''} ${item?.nombre || itemId}`, m)
+            return conn.reply(m.chat, `📤 *DESEQUIPADO*
+
+${item?.emoji || ''} ${item?.nombre || itemId}`, m)
         }
     }
 
-    // Mostrar inventario completo
     const inventory = user.inventory || {}
     const equipped = getEquippedItems(userId)
     const bonuses = getEquipmentBonus(userId)
 
-    let txt = `🎒 *INVENTARIO DE ${user.profile?.displayName || user.username}*\n\n`
+    let txt = `🎒 *INVENTARIO DE ${user.profile?.displayName || user.username}*
 
-    // Info del jugador
-    txt += `📈 Nivel: ${user.level || 1} | ✨ EXP: ${user.exp || 0}/${(user.level || 1) * 150}\n`
-    txt += `💰 Dinero: ${formatMoney(user.money || 0)} | 🏦 Banco: ${formatMoney(user.bank || 0)}\n\n`
+`
 
-    // Items equipados
+    txt += `📈 Nivel: ${user.level || 1} | ✨ EXP: ${user.exp || 0}/${(user.level || 1) * 150}
+`
+    txt += `💰 Dinero: ${formatMoney(user.money || 0)} | 🏦 Banco: ${formatMoney(user.bank || 0)}
+
+`
+
     const equipadosList = Object.values(equipped)
     if (equipadosList.length > 0) {
-        txt += `⚔️ *EQUIPADO:*\n`
+        txt += `⚔️ *EQUIPADO:*
+`
         for (const data of equipadosList) {
             const item = getItem(data.id)
             const dur = data.durabilidad ? ` [${data.durabilidad}⚡]` : ''
-            txt += `  ${item?.emoji || '•'} *${item?.nombre || data.id}*${dur}\n`
+            txt += `  ${item?.emoji || '•'} *${item?.nombre || data.id}*${dur}
+`
         }
 
-        // Mostrar bonus totales
-        txt += `\n📊 *Bonus de equipamiento:*\n`
-        if (bonuses.mineria > 1) txt += `  ⛏️ Minería: x${bonuses.mineria.toFixed(2)}\n`
-        if (bonuses.pesca > 1) txt += `  🎣 Pesca: x${bonuses.pesca.toFixed(2)}\n`
-        if (bonuses.caza > 1) txt += `  🏹 Caza: x${bonuses.caza.toFixed(2)}\n`
-        if (bonuses.luck > 1) txt += `  🍀 Suerte: x${bonuses.luck.toFixed(2)}\n`
-        if (bonuses.exp_bonus > 1) txt += `  ✨ EXP: x${bonuses.exp_bonus.toFixed(2)}\n`
-        if (bonuses.defensa > 0) txt += `  🛡️ Defensa: +${bonuses.defensa}\n`
-        if (bonuses.daño > 0) txt += `  ⚔️ Daño: +${bonuses.daño}\n`
-        txt += `\n`
+        txt += `
+📊 *Bonus de equipamiento:*
+`
+        if (bonuses.mineria > 1) txt += `  ⛏️ Mineria: x${bonuses.mineria.toFixed(2)}
+`
+        if (bonuses.pesca > 1) txt += `  🎣 Pesca: x${bonuses.pesca.toFixed(2)}
+`
+        if (bonuses.caza > 1) txt += `  🏹 Caza: x${bonuses.caza.toFixed(2)}
+`
+        if (bonuses.luck > 1) txt += `  🍀 Suerte: x${bonuses.luck.toFixed(2)}
+`
+        if (bonuses.exp_bonus > 1) txt += `  ✨ EXP: x${bonuses.exp_bonus.toFixed(2)}
+`
+        if (bonuses.defensa > 0) txt += `  🛡️ Defensa: +${bonuses.defensa}
+`
+        if (bonuses.danio > 0) txt += `  ⚔️ Daño: +${bonuses.danio}
+`
+        txt += `
+`
     }
 
-    // Items por categoría
     const cats = {
         herramienta: '🔧 Herramientas',
         arma: '⚔️ Armas',
@@ -108,18 +125,24 @@ let handler = async (m, { conn, args }) => {
         for (const data of items) {
             const dur = data.durabilidad ? ` [${data.durabilidad}⚡]` : ''
             const rareza = data.item.rareza ? ` (${RAREZA_INFO[data.item.rareza]?.nombre || data.item.rareza})` : ''
-            txt += `  ${data.item.emoji} ${data.item.nombre} x${data.cantidad}${dur}${rareza}\n`
+            txt += `  ${data.item.emoji} ${data.item.nombre} x${data.cantidad}${dur}${rareza}
+`
         }
-        txt += `\n`
+        txt += `
+`
     }
 
     if (Object.keys(inventory).length === 0) {
-        txt += `📭 Tu inventario está vacío.\n`
+        txt += `📭 Tu inventario esta vacio.
+`
         txt += `Usa #minar, #pescar, #cazar o #recolectar para obtener items.`
     }
 
-    txt += `\n💡 *Comandos:*\n`
-    txt += `#inv equipar <item> - Equipar\n`
+    txt += `
+💡 *Comandos:*
+`
+    txt += `#inv equipar <item> - Equipar
+`
     txt += `#inv desequipar <item> - Desequipar`
 
     await conn.sendMessage(m.chat, { text: txt }, { quoted: m })

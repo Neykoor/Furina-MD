@@ -10,9 +10,10 @@ let handler = async (m, { conn, args }) => {
     const user = getOrCreateUser(userId)
 
     const cooldown = checkCooldown(user, 'lastHunt', 8)
-    if (!cooldown.ready) return conn.reply(m.chat, `🏹 *Arco en enfriamiento*\n\nEspera *${cooldown.remaining}* minutos más`, m)
+    if (!cooldown.ready) return conn.reply(m.chat, `🏹 *Arco en enfriamiento*
 
-    // Si elige un animal específico
+Espera *${cooldown.remaining}* minutos mas`, m)
+
     let animalId = null
     if (args[0]) {
         const search = args[0].toLowerCase()
@@ -26,7 +27,6 @@ let handler = async (m, { conn, args }) => {
     const luckBonus = equipBonus.luck || 1
     const huntBonus = equipBonus.caza || 1
 
-    // Si no eligió, roll aleatorio
     if (!animalId) {
         animalId = rollItem(ANIMALES, luckBonus).id
     }
@@ -34,11 +34,9 @@ let handler = async (m, { conn, args }) => {
     const animal = ANIMALES[animalId]
     if (!animal) return conn.reply(m.chat, `❌ Animal no encontrado. Usa #cazar sin argumentos para cazar aleatoriamente.`, m)
 
-    // Combate
     const battle = huntBattle(userId, animalId)
     if (!battle.success) return conn.reply(m.chat, `❌ ${battle.error}`, m)
 
-    // Usar durabilidad de arma
     const equipped = Object.entries(user.inventory || {}).find(([id, data]) => 
         data.equipado && (getItem(id)?.tipo === 'arma' || getItem(id)?.tipo === 'herramienta')
     )
@@ -48,7 +46,6 @@ let handler = async (m, { conn, args }) => {
         toolBroken = durResult.broken
     }
 
-    // Aplicar resultados
     let newMoney = (user.money || 0) + battle.moneyGained
     if (newMoney < 0) newMoney = 0
     updateUser(userId, { money: newMoney, lastHunt: Date.now() })
@@ -57,20 +54,17 @@ let handler = async (m, { conn, args }) => {
         addExp(userId, battle.expGained)
     }
 
-    // Items drops
     if (battle.itemsDropped) {
         for (const drop of battle.itemsDropped) {
             addItem(userId, drop.item, drop.cantidad)
         }
     }
 
-    // Si ganó, agregar el animal al inventario
     if (battle.victory) {
         const cantidad = Math.floor(1 * huntBonus)
         addItem(userId, animal.id, cantidad)
     }
 
-    // Stats y misiones
     updateStats(userId, 'cazar', { item: animal, cantidad: battle.victory ? 1 : 0, money: battle.moneyGained })
     updateMissionProgress(userId, 'cazar', 1)
     if (battle.victory) {
@@ -78,10 +72,12 @@ let handler = async (m, { conn, args }) => {
         updateMissionProgress(userId, 'cazar_especifico', 1, animal.id)
     }
 
-    // Formatear mensaje
     let txt = formatBattleResult(battle)
-    if (toolBroken) txt += `\n\n💔 ¡Tu arma se rompió en combate!`
-    if (equipBonus.caza > 1 && battle.victory) txt += `\n🏹 Bonus arma: x${equipBonus.caza.toFixed(1)}`
+    if (toolBroken) txt += `
+
+💔 ¡Tu arma se rompio en combate!`
+    if (equipBonus.caza > 1 && battle.victory) txt += `
+🏹 Bonus arma: x${equipBonus.caza.toFixed(1)}`
 
     await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
 }

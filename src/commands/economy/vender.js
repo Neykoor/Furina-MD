@@ -8,12 +8,17 @@ let handler = async (m, { conn, args }) => {
     const userId = m.sender.split('@')[0].replace(/\D/g, '')
     const user = getOrCreateUser(userId)
 
-    // Si no hay argumentos, mostrar items vendibles
     if (!args[0]) {
         const inventory = getInventory(userId)
-        let txt = `💰 *TIENDA - VENDER ITEMS*\n\n`
-        txt += `Usa: *#vender <item> [cantidad]*\n\n`
-        txt += `📦 *Tus items vendibles:*\n\n`
+        let txt = `💰 *TIENDA - VENDER ITEMS*
+
+`
+        txt += `Usa: *#vender <item> [cantidad]*
+
+`
+        txt += `📦 *Tus items vendibles:*
+
+`
 
         let hasItems = false
         for (const [id, data] of Object.entries(inventory)) {
@@ -24,20 +29,23 @@ let handler = async (m, { conn, args }) => {
             hasItems = true
             const valorUnitario = item.valor || item.precio_venta || 0
             const valorTotal = valorUnitario * data.cantidad
-            txt += `${item.emoji} *${item.nombre}* x${data.cantidad}\n`
-            txt += `   └ 💵 ${formatMoney(valorUnitario)} c/u = ${formatMoney(valorTotal)} total\n`
+            txt += `${item.emoji} *${item.nombre}* x${data.cantidad}
+`
+            txt += `   └ 💵 ${formatMoney(valorUnitario)} c/u = ${formatMoney(valorTotal)} total
+`
         }
 
         if (!hasItems) {
-            txt += `📭 No tienes items para vender.\n`
+            txt += `📭 No tienes items para vender.
+`
             txt += `Usa #minar, #pescar, #cazar para obtener items.`
         }
 
-        txt += `\n💡 Escribe *#vender <nombre> [cantidad]* para vender`
+        txt += `
+💡 Escribe *#vender <nombre> [cantidad]* para vender`
         return conn.reply(m.chat, txt, m)
     }
 
-    // Parsear cantidad
     let cantidad = 1
     let itemName = args.join(' ')
 
@@ -47,9 +55,8 @@ let handler = async (m, { conn, args }) => {
         itemName = args.slice(0, -1).join(' ')
     }
 
-    if (cantidad < 1) return conn.reply(m.chat, `❌ Cantidad inválida`, m)
+    if (cantidad < 1) return conn.reply(m.chat, `❌ Cantidad invalida`, m)
 
-    // Buscar item
     const inventory = getInventory(userId)
     const itemId = Object.keys(inventory).find(id => {
         const item = getItem(id)
@@ -61,17 +68,21 @@ let handler = async (m, { conn, args }) => {
     const item = getItem(itemId)
     if (!item || !item.valor) return conn.reply(m.chat, `❌ Ese item no se puede vender.`, m)
 
-    // Vender
     const result = sellItem(userId, itemId, cantidad)
     if (!result.success) return conn.reply(m.chat, `❌ ${result.error}`, m)
 
     updateStats(userId, 'vender', { money: result.valor, cantidad })
     updateMissionProgress(userId, 'vender', cantidad)
 
-    let txt = `💰 *VENTA EXITOSA*\n\n`
-    txt += `${item.emoji} *${item.nombre}* x${cantidad}\n`
-    txt += `💵 Ganancia: *${formatMoney(result.valor)}*\n`
-    txt += `\n💵 *Nuevo balance:* ${formatMoney(result.newMoney)}`
+    let txt = `💰 *VENTA EXITOSA*
+
+`
+    txt += `${item.emoji} *${item.nombre}* x${cantidad}
+`
+    txt += `💵 Ganancia: *${formatMoney(result.valor)}*
+`
+    txt += `
+💵 *Nuevo balance:* ${formatMoney(result.newMoney)}`
 
     await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
 }

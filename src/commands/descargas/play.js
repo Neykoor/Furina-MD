@@ -12,14 +12,15 @@ import Jimp from 'jimp'
 
 const execAsync = promisify(exec)
 const TEMP_DIR = './temp/descargas'
+const YTDLP = global.ytDlpPath || 'yt-dlp'
 
 // ─── CREAR CARPETA TEMPORAL ───
 if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true })
 
 // ─── CONSTANTES ───
-const MAX_VIDEO_SIZE = 100 * 1024 * 1024   // 100MB límite WhatsApp
-const MAX_AUDIO_SIZE = 100 * 1024 * 1024   // 100MB límite documento
-const DOWNLOAD_TIMEOUT = 180000             // 3 minutos
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024
+const MAX_AUDIO_SIZE = 100 * 1024 * 1024
+const DOWNLOAD_TIMEOUT = 180000
 
 // ─── REDIMENSIONAR THUMBNAIL ───
 async function resizeImage(buffer, size = 300) {
@@ -82,13 +83,13 @@ async function getRcanal() {
     }
 }
 
-// ─── DESCARGAR AUDIO COMO DOCUMENTO CON YT-DLP ───
+// ─── DESCARGAR AUDIO COMO DOCUMENTO ───
 async function descargarAudioDoc(url) {
     const id = Date.now()
     const outputPath = path.join(TEMP_DIR, `audio_${id}.mp3`)
     
     try {
-        const cmd = `yt-dlp -f bestaudio --extract-audio --audio-format mp3 --audio-quality 2 -o "${outputPath}" "${url}"`
+        const cmd = `${YTDLP} -f bestaudio --extract-audio --audio-format mp3 --audio-quality 2 -o "${outputPath}" "${url}"`
         await execAsync(cmd, { timeout: DOWNLOAD_TIMEOUT })
         
         if (!fs.existsSync(outputPath)) {
@@ -117,13 +118,13 @@ async function descargarAudioDoc(url) {
     }
 }
 
-// ─── DESCARGAR VIDEO COMO DOCUMENTO CON YT-DLP ───
+// ─── DESCARGAR VIDEO COMO DOCUMENTO ───
 async function descargarVideoDoc(url) {
     const id = Date.now()
     const outputPath = path.join(TEMP_DIR, `video_${id}.mp4`)
     
     try {
-        const cmd = `yt-dlp -f "best[filesize<100M]" --merge-output-format mp4 -o "${outputPath}" "${url}"`
+        const cmd = `${YTDLP} -f "best[filesize<100M]" --merge-output-format mp4 -o "${outputPath}" "${url}"`
         await execAsync(cmd, { timeout: DOWNLOAD_TIMEOUT })
         
         if (!fs.existsSync(outputPath)) {
@@ -155,7 +156,7 @@ async function descargarVideoDoc(url) {
 // ─── DESCARGAR AUDIO DIRECTO (STREAM) ───
 async function descargarAudioStream(url) {
     try {
-        const cmd = `yt-dlp -f bestaudio --extract-audio --audio-format mp3 --audio-quality 2 -o - "${url}"`
+        const cmd = `${YTDLP} -f bestaudio --extract-audio --audio-format mp3 --audio-quality 2 -o - "${url}"`
         const { stdout } = await execAsync(cmd, { 
             timeout: DOWNLOAD_TIMEOUT,
             encoding: 'buffer',
@@ -179,7 +180,7 @@ async function descargarAudioStream(url) {
 // ─── DESCARGAR VIDEO DIRECTO (STREAM) ───
 async function descargarVideoStream(url) {
     try {
-        const cmd = `yt-dlp -f "best[filesize<100M]" --merge-output-format mp4 -o - "${url}"`
+        const cmd = `${YTDLP} -f "best[filesize<100M]" --merge-output-format mp4 -o - "${url}"`
         const { stdout } = await execAsync(cmd, { 
             timeout: DOWNLOAD_TIMEOUT,
             encoding: 'buffer',
@@ -203,7 +204,7 @@ async function descargarVideoStream(url) {
 // ─── OBTENER INFO DEL VIDEO CON YT-DLP ───
 async function infoVideoYtDlp(url) {
     try {
-        const { stdout } = await execAsync(`yt-dlp -j --no-download "${url}"`, { timeout: 30000 })
+        const { stdout } = await execAsync(`${YTDLP} -j --no-download "${url}"`, { timeout: 30000 })
         return JSON.parse(stdout)
     } catch {
         return null
@@ -212,6 +213,17 @@ async function infoVideoYtDlp(url) {
 
 // ─── HANDLER PRINCIPAL ───
 const handler = async (m, { conn, text, usedPrefix, command }) => {
+    
+    // ─── VERIFICAR QUE YT-DLP ESTÁ DISPONIBLE ───
+    if (!global.ytDlpPath && YTDLP === 'yt-dlp') {
+        try {
+            await execAsync('yt-dlp --version', { timeout: 5000 })
+        } catch {
+            return conn.sendMessage(m.chat, {
+                text: '❌ *Sistema de descargas no disponible.*\n\nEl administrador del servidor debe instalar yt-dlp:\n```pip install yt-dlp```'
+            }, { quoted: m })
+        }
+    }
     
     // ─── SIN TEXTO: MOSTRAR AYUDA ───
     if (!text?.trim()) {
@@ -272,7 +284,7 @@ const handler = async (m, { conn, text, usedPrefix, command }) => {
             `ׅㅤ𓏸𓈒ㅤׄ *ʟɪɴᴋ* :: ${url}\n\n` +
             `> ## \`ᴇʟɪɢᴇ ᴜɴ ᴏᴘᴄɪᴏ́ɴ ⬇️\``
 
-        // ─── BOTONES NATIVOS INTERACTIVOS (NUEVO FORMATO) ───
+        // ─── BOTONES NATIVOS INTERACTIVOS ───
         const { proto, generateWAMessageFromContent, WA_DEFAULT_EPHEMERAL } = (await import('@whiskeysockets/baileys')).default
 
         const interactiveMessage = {
@@ -578,6 +590,8 @@ async function handleDirectDownload(m, conn, text, command, usedPrefix) {
 handler.help = ['play', 'ytmp3', 'ytmp4', 'ytmp3doc', 'ytmp4doc']
 handler.tags = ['descargas']
 handler.command = ['play', 'ytmp3', 'ytmp4', 'ytmp3doc', 'ytmp4doc', 'play_audio', 'play_video', 'play_audiodoc', 'play_videodoc']
+handler.register = false
 handler.group = false
+handler.reg = true
 
 export default handler

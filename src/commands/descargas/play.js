@@ -1,6 +1,7 @@
+
 import fetch from "node-fetch"
 import yts from "yt-search"
-import Jimp from "jimp"
+import { Jimp } from "jimp"  // ← CORREGIDO: v1.6.0 usa named export
 import axios from "axios"
 import fs from "fs"
 import { fileURLToPath } from "url"
@@ -15,7 +16,7 @@ const AUDIO_DOC_THRESHOLD = 30 * 1024 * 1024
 async function resizeImage(buffer, size = 300) {
     try {
         const image = await Jimp.read(buffer)
-        return await image.resize(size, size).getBufferAsync(Jimp.MIME_JPEG)
+        return await image.resize({ w: size, h: size }).getBuffer("image/jpeg")  // ← CORREGIDO: API v1.x
     } catch {
         return buffer
     }

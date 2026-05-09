@@ -1,17 +1,26 @@
 import './src/database/config.js'
+import { downloadYtDlp } from './lib/yt-dlp-downloader.js'
 import { start } from './lib/connection.js'
 import { autoStartSubBots } from './lib/serbot.js'
 
-// Iniciar bot principal
+try {
+    global.ytDlpPath = await downloadYtDlp()
+    console.log(`✅ Descargas listas: ${global.ytDlpPath}`)
+} catch (error) {
+    console.error('❌ Descargas fallaron:', error.message)
+    global.ytDlpPath = null
+}
+
+// ─── INICIAR BOT PRINCIPAL ───
 start().catch(err => {
-  console.error('❌ Error fatal:', err)
-  process.exit(1)
+    console.error('❌ Error fatal:', err)
+    process.exit(1)
 })
 
-// Auto-iniciar sub-bots guardados
+// ─── AUTO-INICIAR SUB-BOTS ───
 autoStartSubBots().catch(console.error)
 
-// Iniciar servidor web
+// ─── INICIAR SERVIDOR WEB ───
 import('./lib/web.js').catch(err => {
-  console.error('❌ Error iniciando web:', err)
+    console.error('❌ Error iniciando web:', err)
 })

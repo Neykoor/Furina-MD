@@ -23,9 +23,7 @@ let handler = async (m, { conn }) => {
     const user = getOrCreateUser(userId)
 
     const cooldown = checkCooldown(user, 'lastWork', 10)
-    if (!cooldown.ready) return conn.reply(m.chat, `⏳ *Estas cansado*
-
-Descansa *${cooldown.remaining}* minutos mas`, m)
+    if (!cooldown.ready) return conn.reply(m.chat, `⏳ *Estas cansado*\n\nDescansa *${cooldown.remaining}* minutos mas`, m)
 
     const equipBonus = getEquipmentBonus(userId)
     const rango = getRango(user.level || 1)
@@ -39,7 +37,8 @@ Descansa *${cooldown.remaining}* minutos mas`, m)
     const ganancia = Math.floor(Math.random() * (trabajo.max - trabajo.min + 1)) + trabajo.min
     const bonusNivel = Math.floor(ganancia * ((user.level || 1) * 0.05))
     const bonusRango = Math.floor(ganancia * (rango.nivel * 0.01))
-    const bonusEquip = Math.floor(ganancia * ((equipBonus.money || 1) - 1))
+    // FIX: Usar charisma en vez de money (que no existe en equipment bonus)
+    const bonusEquip = Math.floor(ganancia * ((equipBonus.charisma || 0) * 0.01))
     const total = ganancia + bonusNivel + bonusRango + bonusEquip
 
     const newMoney = (user.money || 0) + total
@@ -54,31 +53,18 @@ Descansa *${cooldown.remaining}* minutos mas`, m)
     updateMissionProgress(userId, 'trabajar', 1)
     updateMissionProgress(userId, 'ganar_dinero', total)
 
-    let txt = `💼 *TRABAJASTE COMO ${trabajo.nombre}*
-
-`
-    txt += `💰 *Ganancia base:* ${formatMoney(ganancia)}
-`
-    if (bonusNivel > 0) txt += `📈 *Bonus nivel:* +${formatMoney(bonusNivel)}
-`
-    if (bonusRango > 0) txt += `${rango.emoji} *Bonus ${rango.nombre}:* +${formatMoney(bonusRango)}
-`
-    if (bonusEquip > 0) txt += `⚡ *Bonus equipamiento:* +${formatMoney(bonusEquip)}
-`
-    txt += `━━━━━━━━━━━━━━
-`
-    txt += `💵 *Total ganado:* ${formatMoney(total)}
-`
-    txt += `✨ *EXP:* +${expTotal}
-`
-    txt += `🔨 *Trabajos totales:* ${workCount}
-
-`
+    let txt = `💼 *TRABAJASTE COMO ${trabajo.nombre}*\n\n`
+    txt += `💰 *Ganancia base:* ${formatMoney(ganancia)}\n`
+    if (bonusNivel > 0) txt += `📈 *Bonus nivel:* +${formatMoney(bonusNivel)}\n`
+    if (bonusRango > 0) txt += `${rango.emoji} *Bonus ${rango.nombre}:* +${formatMoney(bonusRango)}\n`
+    if (bonusEquip > 0) txt += `⚡ *Bonus equipamiento:* +${formatMoney(bonusEquip)}\n`
+    txt += `━━━━━━━━━━━━━━\n`
+    txt += `💵 *Total ganado:* ${formatMoney(total)}\n`
+    txt += `✨ *EXP:* +${expTotal}\n`
+    txt += `🔨 *Trabajos totales:* ${workCount}\n\n`
     txt += `💵 *Balance:* ${formatMoney(newMoney)}`
 
-    if (expResult.leveledUp) txt += `
-
-🎉 *¡SUBISTE AL NIVEL ${expResult.level}!*`
+    if (expResult.leveledUp) txt += `\n\n🎉 *¡SUBISTE AL NIVEL ${expResult.level}!*`
 
     await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
 }

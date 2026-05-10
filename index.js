@@ -13,7 +13,7 @@ export {
     formatFamilyTree,
     getRelationLabel,
     getFamilyStats
-} from './family.js'
+} from './lib/family.js'
 
 // ─── INICIAR BOT PRINCIPAL ───
 start().catch(err => {

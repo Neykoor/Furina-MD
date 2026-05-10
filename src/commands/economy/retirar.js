@@ -1,53 +1,28 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
-import { join } from 'path'
+import { getOrCreateUser, updateUser, formatMoney } from '../../../lib/users.js'
 
-const DATA_DIR = join(process.cwd(), 'data')
-const ECONOMY_FILE = join(DATA_DIR, 'economy.json')
-
-function getEconomy() {
+let handler = async (m, { conn, args }) => {
     try {
-        if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true })
-        if (!existsSync(ECONOMY_FILE)) writeFileSync(ECONOMY_FILE, '[]')
-        return JSON.parse(readFileSync(ECONOMY_FILE, 'utf-8'))
-    } catch { return [] }
-}
+        const userId = m.sender.split('@')[0].replace(/\D/g, '')
+        const user = getOrCreateUser(userId)
 
-function saveEconomy(data) {
-    try {
-        if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true })
-        writeFileSync(ECONOMY_FILE, JSON.stringify(data, null, 2))
-    } catch (e) { console.error('Error guardando economía:', e.message) }
-}
+        const amount = args[0] === 'all' ? user.bank : parseInt(args[0])
+        if (!amount || amount <= 0) {
+            return await conn.reply(m.chat, `🏦 *¿Cuánto retirar?*\n\n_Uso: #retirar [cantidad/all]_`, m)
+        }
+        if (amount > (user.bank || 0)) {
+            return await conn.reply(m.chat, `❌ *No tienes suficiente en el banco*\n\n🏦 Disponible: ${formatMoney(user.bank)}`, m)
+        }
 
-let handler = async (m, { conn, args, usedPrefix, command }) => {
-    const userJid = m.sender
-    const userId = userJid.split('@')[0].replace(/\D/g, '')
-    const data = getEconomy()
-    let user = data.find(u => u.username === userId)
+        updateUser(userId, { money: (user.money || 0) + amount, bank: (user.bank || 0) - amount })
 
-    if (!user) {
-        user = { username: userId, money: 0, bank: 0, exp: 0, level: 1, lastClaim: null, inventory: [] }
-        data.push(user)
-        saveEconomy(data)
+        await conn.sendMessage(m.chat, {
+            text: `💵 *RETIRO*\n\n🏦 *Retirado:* -${formatMoney(amount)}\n💰 *Efectivo:* ${formatMoney((user.money || 0) + amount)}\n🏦 *Banco:* ${formatMoney((user.bank || 0) - amount)}`
+        }, { quoted: m })
+
+    } catch (error) {
+        console.error('Error en retirar:', error)
+        await conn.reply(m.chat, `❌ *Error al ejecutar el comando*\n\n💡 Intenta de nuevo. Si el problema persiste, contacta al administrador.\n\n📝 Detalle: ${error.message}`, m)
     }
-
-    const amount = parseInt(args[0])
-    if (!amount || isNaN(amount) || amount <= 0) {
-        return conn.sendMessage(m.chat, { text: `❌ Ingresa una cantidad válida.\nEjemplo: *${usedPrefix}retirar 1000*` }, { quoted: m })
-    }
-
-    if (user.bank < amount) {
-        return conn.sendMessage(m.chat, { text: `❌ No tienes suficiente dinero en el banco.\nBanco: $${user.bank.toLocaleString()}` }, { quoted: m })
-    }
-
-    user.bank -= amount
-    user.money += amount
-    saveEconomy(data)
-
-    await conn.sendMessage(m.chat, {
-        text: `🏦 *RETIRO EXITOSO*\n\n💵 Retirado: $${amount.toLocaleString()}\n💰 Efectivo: $${user.money.toLocaleString()}\n🏦 Banco restante: $${user.bank.toLocaleString()}`,
-        mentions: [userJid]
-    }, { quoted: m })
 }
 
 handler.help = ['retirar <cantidad>', 'ret <cantidad>']

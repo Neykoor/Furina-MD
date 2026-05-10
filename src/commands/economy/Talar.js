@@ -1,5 +1,5 @@
 import { getOrCreateUser, updateUser, addExp, checkCooldown, formatMoney } from '../../../lib/users.js'
-import { MATERIALES, rollItem, formatRareza } from '../../../lib/economy/items.js'
+import { MATERIALES_TALAR, rollItem, getItem, formatRareza } from '../../../lib/economy/items.js'
 import { addItem, useDurability, getEquipmentBonus } from '../../../lib/economy/inventory.js'
 import { updateMissionProgress } from '../../../lib/economy/missions.js'
 import { updateStats } from '../../../lib/economy/stats.js'
@@ -16,11 +16,12 @@ let handler = async (m, { conn }) => {
 
         const equipBonus = getEquipmentBonus(userId)
         const luckBonus = equipBonus.luck || 1
+        const talarBonus = equipBonus.talar || 1
 
         const cantidadBase = Math.floor(Math.random() * 4) + 2 + Math.floor((user.level || 1) / 8)
-        const cantidad = Math.floor(cantidadBase)
+        const cantidad = Math.floor(cantidadBase * talarBonus)
 
-        const material = rollItem(MATERIALES, luckBonus)
+        const material = rollItem(MATERIALES_TALAR, luckBonus)
 
         if ((user.level || 1) < material.nivel) {
             return await conn.sendMessage(m.chat, { text: `🪓 *Talaaste pero no encontraste nada especial...*\n\nNecesitas nivel ${material.nivel} para ${material.nombre}` }, { quoted: m })
@@ -57,7 +58,7 @@ let handler = async (m, { conn }) => {
         txt += `💰 Valor: *${formatMoney(valorTotal)}*\n`
         txt += `✨ EXP: *+${expTotal}*\n`
         if (bonusNivel > 0) txt += `📈 Bonus nivel: *+${formatMoney(bonusNivel * cantidad)}*\n`
-        if (equipBonus.mineria > 1) txt += `🔧 Bonus hacha: *x${equipBonus.mineria.toFixed(1)}*\n`
+        if (equipBonus.talar > 1) txt += `🔧 Bonus hacha: *x${equipBonus.talar.toFixed(1)}*\n`
         if (toolBroken) txt += `💔 ¡Tu hacha se rompió!\n`
         txt += `\n💵 *Balance:* ${formatMoney(newMoney)}`
 
@@ -76,4 +77,3 @@ handler.tags = ['economy', 'rpg']
 handler.command = ['talar', 'chop', 'cortar', 'tala']
 
 export default handler
-          

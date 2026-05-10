@@ -16,7 +16,7 @@ let handler = async (m, { conn, args }) => {
             const result = claimMissionReward(userId, missionId)
 
             if (!result.success) {
-                return await conn.reply(m.chat, `❌ ${result.error}\n\nUsa *#misiones* para ver tus misiones activas.`, m)
+                return await conn.sendMessage(m.chat, { text: `❌ ${result.error}\n\nUsa *#misiones* para ver tus misiones activas.` }, { quoted: m })
             }
 
             let txt = `🎉 *¡RECOMPENSA RECLAMADA!*\n\n`
@@ -35,7 +35,7 @@ let handler = async (m, { conn, args }) => {
                 txt += `\n🎉 *¡SUBISTE AL NIVEL ${result.expResult.level}!*`
             }
 
-            return await conn.reply(m.chat, txt, m)
+            return await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
         }
 
         const txt = formatMissions(userId)
@@ -43,7 +43,7 @@ let handler = async (m, { conn, args }) => {
 
     } catch (error) {
         console.error('Error en misiones:', error)
-        await conn.reply(m.chat, `❌ *Error al ejecutar el comando*\n\n💡 Intenta de nuevo. Si el problema persiste, contacta al administrador.\n\n📝 Detalle: ${error.message}`, m)
+        await conn.sendMessage(m.chat, { text: `❌ *Error al ejecutar el comando*\n\n💡 Intenta de nuevo. Si el problema persiste, contacta al administrador.\n\n📝 Detalle: ${error.message}` }, { quoted: m })
     }
 }
 

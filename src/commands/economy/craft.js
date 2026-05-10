@@ -41,7 +41,7 @@ let handler = async (m, { conn, args }) => {
             }
 
             txt += `\n💡 Escribe *#craft <nombre>* para intentar craftear`
-            return await conn.reply(m.chat, txt, m)
+            return await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
         }
 
         const search = args.join(' ').toLowerCase()
@@ -51,13 +51,13 @@ let handler = async (m, { conn, args }) => {
         )
 
         if (!recetaId) {
-            return await conn.reply(m.chat, `❌ Receta no encontrada. Usa *#craft* para ver las recetas disponibles.`, m)
+            return await conn.sendMessage(m.chat, { text: `❌ Receta no encontrada. Usa *#craft* para ver las recetas disponibles.` }, { quoted: m })
         }
 
         const receta = RECETAS_CRAFTEO[recetaId]
 
         if ((user.level || 1) < receta.nivel) {
-            return await conn.reply(m.chat, `❌ Necesitas nivel ${receta.nivel} para craftear ${receta.nombre}.\nTu nivel actual: ${user.level || 1}`, m)
+            return await conn.sendMessage(m.chat, { text: `❌ Necesitas nivel ${receta.nivel} para craftear ${receta.nombre}.\nTu nivel actual: ${user.level || 1}` }, { quoted: m })
         }
 
         const result = craftItem(userId, recetaId)
@@ -69,7 +69,7 @@ let handler = async (m, { conn, args }) => {
                 const item = getItem(miss.item)
                 txt += `  • ${item?.emoji || ''} ${item?.nombre || miss.item}: ${miss.have}/${miss.need}\n`
             }
-            return await conn.reply(m.chat, txt, m)
+            return await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
         }
 
         const expResult = addExp(userId, receta.exp)
@@ -101,7 +101,7 @@ let handler = async (m, { conn, args }) => {
 
     } catch (error) {
         console.error('Error en craft:', error)
-        await conn.reply(m.chat, `❌ *Error al ejecutar el comando*\n\n💡 Intenta de nuevo. Si el problema persiste, contacta al administrador.\n\n📝 Detalle: ${error.message}`, m)
+        await conn.sendMessage(m.chat, { text: `❌ *Error al ejecutar el comando*\n\n💡 Intenta de nuevo. Si el problema persiste, contacta al administrador.\n\n📝 Detalle: ${error.message}` }, { quoted: m })
     }
 }
 

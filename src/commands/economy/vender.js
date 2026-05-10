@@ -34,7 +34,7 @@ let handler = async (m, { conn, args }) => {
             }
 
             txt += `\n💡 Escribe *#vender <nombre> [cantidad]* para vender`
-            return await conn.reply(m.chat, txt, m)
+            return await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
         }
 
         let cantidad = 1
@@ -46,7 +46,9 @@ let handler = async (m, { conn, args }) => {
             itemName = args.slice(0, -1).join(' ')
         }
 
-        if (cantidad < 1) return await conn.reply(m.chat, `❌ Cantidad inválida`, m)
+        if (cantidad < 1) {
+            return await conn.sendMessage(m.chat, { text: `❌ Cantidad inválida` }, { quoted: m })
+        }
 
         const inventory = getInventory(userId)
         const itemId = Object.keys(inventory).find(id => {
@@ -54,13 +56,19 @@ let handler = async (m, { conn, args }) => {
             return item && (item.nombre.toLowerCase().includes(itemName.toLowerCase()) || id === itemName.toLowerCase())
         })
 
-        if (!itemId) return await conn.reply(m.chat, `❌ No tienes ese item en tu inventario.`, m)
+        if (!itemId) {
+            return await conn.sendMessage(m.chat, { text: `❌ No tienes ese item en tu inventario.` }, { quoted: m })
+        }
 
         const item = getItem(itemId)
-        if (!item || !item.valor) return await conn.reply(m.chat, `❌ Ese item no se puede vender.`, m)
+        if (!item || !item.valor) {
+            return await conn.sendMessage(m.chat, { text: `❌ Ese item no se puede vender.` }, { quoted: m })
+        }
 
         const result = sellItem(userId, itemId, cantidad)
-        if (!result.success) return await conn.reply(m.chat, `❌ ${result.error}`, m)
+        if (!result.success) {
+            return await conn.sendMessage(m.chat, { text: `❌ ${result.error}` }, { quoted: m })
+        }
 
         updateStats(userId, 'vender', { money: result.valor, cantidad })
         updateMissionProgress(userId, 'vender', cantidad)
@@ -74,7 +82,7 @@ let handler = async (m, { conn, args }) => {
 
     } catch (error) {
         console.error('Error en vender:', error)
-        await conn.reply(m.chat, `❌ *Error al ejecutar el comando*\n\n💡 Intenta de nuevo. Si el problema persiste, contacta al administrador.\n\n📝 Detalle: ${error.message}`, m)
+        await conn.sendMessage(m.chat, { text: `❌ *Error al ejecutar el comando*\n\n💡 Intenta de nuevo. Si el problema persiste, contacta al administrador.\n\n📝 Detalle: ${error.message}` }, { quoted: m })
     }
 }
 

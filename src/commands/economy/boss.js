@@ -11,7 +11,7 @@ let handler = async (m, { conn, args }) => {
 
         const cooldown = checkCooldown(user, 'lastBoss', 60)
         if (!cooldown.ready) {
-            return await conn.reply(m.chat, `👹 *Descanso de jefe*\n\nEspera *${cooldown.remaining}* minutos más`, m)
+            return await conn.sendMessage(m.chat, { text: `👹 *Descanso de jefe*\n\nEspera *${cooldown.remaining}* minutos más` }, { quoted: m })
         }
 
         if (!args || args.length === 0) {
@@ -33,7 +33,7 @@ let handler = async (m, { conn, args }) => {
             }
 
             txt += `⚠️ Los jefes son muy poderosos. Asegúrate de tener buen equipamiento.`
-            return await conn.reply(m.chat, txt, m)
+            return await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
         }
 
         const search = args.join(' ').toLowerCase()
@@ -42,12 +42,12 @@ let handler = async (m, { conn, args }) => {
         )
 
         if (!bossId) {
-            return await conn.reply(m.chat, `❌ Jefe no encontrado. Usa *#boss* para ver la lista.`, m)
+            return await conn.sendMessage(m.chat, { text: `❌ Jefe no encontrado. Usa *#boss* para ver la lista.` }, { quoted: m })
         }
 
         const battle = bossBattle(userId, bossId)
         if (!battle.success) {
-            return await conn.reply(m.chat, `❌ ${battle.error}`, m)
+            return await conn.sendMessage(m.chat, { text: `❌ ${battle.error}` }, { quoted: m })
         }
 
         let newMoney = (user.money || 0) + battle.moneyGained
@@ -75,7 +75,7 @@ let handler = async (m, { conn, args }) => {
 
     } catch (error) {
         console.error('Error en boss:', error)
-        await conn.reply(m.chat, `❌ *Error al ejecutar el comando*\n\n💡 Intenta de nuevo. Si el problema persiste, contacta al administrador.\n\n📝 Detalle: ${error.message}`, m)
+        await conn.sendMessage(m.chat, { text: `❌ *Error al ejecutar el comando*\n\n💡 Intenta de nuevo. Si el problema persiste, contacta al administrador.\n\n📝 Detalle: ${error.message}` }, { quoted: m })
     }
 }
 

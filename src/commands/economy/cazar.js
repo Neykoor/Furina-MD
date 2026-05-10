@@ -12,7 +12,7 @@ let handler = async (m, { conn, args }) => {
 
         const cooldown = checkCooldown(user, 'lastHunt', 8)
         if (!cooldown.ready) {
-            return await conn.reply(m.chat, `🏹 *Arco en enfriamiento*\n\nEspera *${cooldown.remaining}* minutos más`, m)
+            return await conn.sendMessage(m.chat, { text: `🏹 *Arco en enfriamiento*\n\nEspera *${cooldown.remaining}* minutos más` }, { quoted: m })
         }
 
         let animalId = null
@@ -34,12 +34,12 @@ let handler = async (m, { conn, args }) => {
 
         const animal = ANIMALES[animalId]
         if (!animal) {
-            return await conn.reply(m.chat, `❌ Animal no encontrado. Usa #cazar sin argumentos para cazar aleatoriamente.`, m)
+            return await conn.sendMessage(m.chat, { text: `❌ Animal no encontrado. Usa #cazar sin argumentos para cazar aleatoriamente.` }, { quoted: m })
         }
 
         const battle = huntBattle(userId, animalId)
         if (!battle.success) {
-            return await conn.reply(m.chat, `❌ ${battle.error}`, m)
+            return await conn.sendMessage(m.chat, { text: `❌ ${battle.error}` }, { quoted: m })
         }
 
         const equipped = Object.entries(user.inventory || {}).find(([id, data]) => 
@@ -85,7 +85,7 @@ let handler = async (m, { conn, args }) => {
 
     } catch (error) {
         console.error('Error en cazar:', error)
-        await conn.reply(m.chat, `❌ *Error al ejecutar el comando*\n\n💡 Intenta de nuevo. Si el problema persiste, contacta al administrador.\n\n📝 Detalle: ${error.message}`, m)
+        await conn.sendMessage(m.chat, { text: `❌ *Error al ejecutar el comando*\n\n💡 Intenta de nuevo. Si el problema persiste, contacta al administrador.\n\n📝 Detalle: ${error.message}` }, { quoted: m })
     }
 }
 

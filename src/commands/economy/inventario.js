@@ -17,10 +17,10 @@ let handler = async (m, { conn, args }) => {
                     return item && (item.nombre.toLowerCase().includes(itemName) || id === itemName)
                 })
 
-                if (!itemId) return await conn.reply(m.chat, `❌ No tienes ese item en tu inventario.`, m)
+                if (!itemId) return await conn.sendMessage(m.chat, { text: `❌ No tienes ese item en tu inventario.` }, { quoted: m })
 
                 const result = equipItem(userId, itemId)
-                if (!result.success) return await conn.reply(m.chat, `❌ ${result.error}`, m)
+                if (!result.success) return await conn.sendMessage(m.chat, { text: `❌ ${result.error}` }, { quoted: m })
 
                 let txt = `⚔️ *ITEM EQUIPADO*\n\n`
                 txt += `${result.item.emoji} *${result.item.nombre}*\n`
@@ -28,7 +28,7 @@ let handler = async (m, { conn, args }) => {
                     const prev = getItem(result.previous)
                     txt += `\n📤 Desequipado: ${prev?.emoji || ''} ${prev?.nombre || result.previous}`
                 }
-                return await conn.reply(m.chat, txt, m)
+                return await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
             }
 
             if (action === 'desequipar' || action === 'uneq') {
@@ -37,11 +37,11 @@ let handler = async (m, { conn, args }) => {
                     return item && (item.nombre.toLowerCase().includes(itemName) || id === itemName)
                 })
 
-                if (!itemId) return await conn.reply(m.chat, `❌ No tienes ese item.`, m)
+                if (!itemId) return await conn.sendMessage(m.chat, { text: `❌ No tienes ese item.` }, { quoted: m })
 
                 unequipItem(userId, itemId)
                 const item = getItem(itemId)
-                return await conn.reply(m.chat, `📤 *DESEQUIPADO*\n\n${item?.emoji || ''} ${item?.nombre || itemId}`, m)
+                return await conn.sendMessage(m.chat, { text: `📤 *DESEQUIPADO*\n\n${item?.emoji || ''} ${item?.nombre || itemId}` }, { quoted: m })
             }
         }
 
@@ -120,7 +120,7 @@ let handler = async (m, { conn, args }) => {
 
     } catch (error) {
         console.error('Error en inventario:', error)
-        await conn.reply(m.chat, `❌ *Error al ejecutar el comando*\n\n💡 Intenta de nuevo. Si el problema persiste, contacta al administrador.\n\n📝 Detalle: ${error.message}`, m)
+        await conn.sendMessage(m.chat, { text: `❌ *Error al ejecutar el comando*\n\n💡 Intenta de nuevo. Si el problema persiste, contacta al administrador.\n\n📝 Detalle: ${error.message}` }, { quoted: m })
     }
 }
 

@@ -11,7 +11,7 @@ let handler = async (m, { conn }) => {
 
         const cooldown = checkCooldown(user, 'lastCollect', 3)
         if (!cooldown.ready) {
-            return await conn.reply(m.chat, `🌿 *Recolección en enfriamiento*\n\nEspera *${cooldown.remaining}* minutos más`, m)
+            return await conn.sendMessage(m.chat, { text: `🌿 *Recolección en enfriamiento*\n\nEspera *${cooldown.remaining}* minutos más` }, { quoted: m })
         }
 
         const equipBonus = getEquipmentBonus(userId)
@@ -23,7 +23,7 @@ let handler = async (m, { conn }) => {
         const material = rollItem(MATERIALES, luckBonus)
 
         if ((user.level || 1) < material.nivel) {
-            return await conn.reply(m.chat, `🌿 *Recolectaste pero no encontraste nada especial...*\n\nNecesitas nivel ${material.nivel} para ${material.nombre}`, m)
+            return await conn.sendMessage(m.chat, { text: `🌿 *Recolectaste pero no encontraste nada especial...*\n\nNecesitas nivel ${material.nivel} para ${material.nombre}` }, { quoted: m })
         }
 
         const bonusNivel = Math.floor(material.valor * ((user.level || 1) * 0.02))
@@ -58,7 +58,7 @@ let handler = async (m, { conn }) => {
 
     } catch (error) {
         console.error('Error en recolectar:', error)
-        await conn.reply(m.chat, `❌ *Error al ejecutar el comando*\n\n💡 Intenta de nuevo. Si el problema persiste, contacta al administrador.\n\n📝 Detalle: ${error.message}`, m)
+        await conn.sendMessage(m.chat, { text: `❌ *Error al ejecutar el comando*\n\n💡 Intenta de nuevo. Si el problema persiste, contacta al administrador.\n\n📝 Detalle: ${error.message}` }, { quoted: m })
     }
 }
 

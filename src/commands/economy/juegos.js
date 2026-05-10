@@ -16,7 +16,7 @@ let handler = async (m, { conn, args, command }) => {
             txt += `🎰 *#slots <cantidad>* - Tragamonedas (hasta 50x)\n`
             txt += `🏇 *#caballos <cantidad> <1-5>* - Carrera (hasta 8x)\n\n`
             txt += `⚠️ Juega con responsabilidad. Puedes perder tu dinero.`
-            return await conn.reply(m.chat, txt, m)
+            return await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
         }
 
         let result = null
@@ -26,7 +26,7 @@ let handler = async (m, { conn, args, command }) => {
             case 'ruleta': {
                 const apuesta = parseInt(args[0])
                 if (!apuesta || isNaN(apuesta)) {
-                    return await conn.reply(m.chat, `❌ Uso: #ruleta <cantidad>\nEjemplo: #ruleta 500`, m)
+                    return await conn.sendMessage(m.chat, { text: `❌ Uso: #ruleta <cantidad>\nEjemplo: #ruleta 500` }, { quoted: m })
                 }
                 result = ruletaRusa(userId, apuesta)
                 gameType = 'ruleta'
@@ -37,7 +37,7 @@ let handler = async (m, { conn, args, command }) => {
                 const apuesta = parseInt(args[0])
                 const numero = parseInt(args[1])
                 if (!apuesta || !numero || numero < 1 || numero > 6) {
-                    return await conn.reply(m.chat, `❌ Uso: #dados <cantidad> <numero 1-6>\nEjemplo: #dados 100 5`, m)
+                    return await conn.sendMessage(m.chat, { text: `❌ Uso: #dados <cantidad> <numero 1-6>\nEjemplo: #dados 100 5` }, { quoted: m })
                 }
                 result = jugarDados(userId, apuesta, numero)
                 gameType = 'dados'
@@ -47,7 +47,7 @@ let handler = async (m, { conn, args, command }) => {
             case 'blackjack': {
                 const apuesta = parseInt(args[0])
                 if (!apuesta || isNaN(apuesta)) {
-                    return await conn.reply(m.chat, `❌ Uso: #blackjack <cantidad>\nEjemplo: #blackjack 500`, m)
+                    return await conn.sendMessage(m.chat, { text: `❌ Uso: #blackjack <cantidad>\nEjemplo: #blackjack 500` }, { quoted: m })
                 }
                 result = blackjack(userId, apuesta)
                 gameType = 'blackjack'
@@ -57,7 +57,7 @@ let handler = async (m, { conn, args, command }) => {
             case 'slots': {
                 const apuesta = parseInt(args[0])
                 if (!apuesta || isNaN(apuesta)) {
-                    return await conn.reply(m.chat, `❌ Uso: #slots <cantidad>\nEjemplo: #slots 100`, m)
+                    return await conn.sendMessage(m.chat, { text: `❌ Uso: #slots <cantidad>\nEjemplo: #slots 100` }, { quoted: m })
                 }
                 result = tragamonedas(userId, apuesta)
                 gameType = 'slots'
@@ -68,7 +68,7 @@ let handler = async (m, { conn, args, command }) => {
                 const apuesta = parseInt(args[0])
                 const caballo = parseInt(args[1])
                 if (!apuesta || !caballo || caballo < 1 || caballo > 5) {
-                    return await conn.reply(m.chat, `❌ Uso: #caballos <cantidad> <caballo 1-5>\nEjemplo: #caballos 500 3`, m)
+                    return await conn.sendMessage(m.chat, { text: `❌ Uso: #caballos <cantidad> <caballo 1-5>\nEjemplo: #caballos 500 3` }, { quoted: m })
                 }
                 result = carreraCaballos(userId, apuesta, caballo)
                 gameType = 'caballos'
@@ -78,7 +78,7 @@ let handler = async (m, { conn, args, command }) => {
 
         if (!result) return
         if (!result.success) {
-            return await conn.reply(m.chat, `❌ ${result.error}`, m)
+            return await conn.sendMessage(m.chat, { text: `❌ ${result.error}` }, { quoted: m })
         }
 
         const txt = formatGameResult(gameType, result)
@@ -86,7 +86,7 @@ let handler = async (m, { conn, args, command }) => {
 
     } catch (error) {
         console.error('Error en juegos:', error)
-        await conn.reply(m.chat, `❌ *Error al ejecutar el comando*\n\n💡 Intenta de nuevo. Si el problema persiste, contacta al administrador.\n\n📝 Detalle: ${error.message}`, m)
+        await conn.sendMessage(m.chat, { text: `❌ *Error al ejecutar el comando*\n\n💡 Intenta de nuevo. Si el problema persiste, contacta al administrador.\n\n📝 Detalle: ${error.message}` }, { quoted: m })
     }
 }
 

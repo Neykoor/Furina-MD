@@ -7,10 +7,10 @@ let handler = async (m, { conn, args }) => {
 
         const amount = args[0] === 'all' ? user.bank : parseInt(args[0])
         if (!amount || amount <= 0) {
-            return await conn.reply(m.chat, `🏦 *¿Cuánto retirar?*\n\n_Uso: #retirar [cantidad/all]_`, m)
+            return await conn.sendMessage(m.chat, { text: `🏦 *¿Cuánto retirar?*\n\n_Uso: #retirar [cantidad/all]_` }, { quoted: m })
         }
         if (amount > (user.bank || 0)) {
-            return await conn.reply(m.chat, `❌ *No tienes suficiente en el banco*\n\n🏦 Disponible: ${formatMoney(user.bank)}`, m)
+            return await conn.sendMessage(m.chat, { text: `❌ *No tienes suficiente en el banco*\n\n🏦 Disponible: ${formatMoney(user.bank)}` }, { quoted: m })
         }
 
         updateUser(userId, { money: (user.money || 0) + amount, bank: (user.bank || 0) - amount })
@@ -21,7 +21,7 @@ let handler = async (m, { conn, args }) => {
 
     } catch (error) {
         console.error('Error en retirar:', error)
-        await conn.reply(m.chat, `❌ *Error al ejecutar el comando*\n\n💡 Intenta de nuevo. Si el problema persiste, contacta al administrador.\n\n📝 Detalle: ${error.message}`, m)
+        await conn.sendMessage(m.chat, { text: `❌ *Error al ejecutar el comando*\n\n💡 Intenta de nuevo. Si el problema persiste, contacta al administrador.\n\n📝 Detalle: ${error.message}` }, { quoted: m })
     }
 }
 

@@ -3,43 +3,52 @@ import { getItem } from '../../../lib/economy/items.js'
 import { generateDailyMissions, generateWeeklyMissions, initAchievements, claimMissionReward, formatMissions } from '../../../lib/economy/missions.js'
 
 let handler = async (m, { conn, args }) => {
-    const userId = m.sender.split('@')[0].replace(/\D/g, '')
-    const user = getOrCreateUser(userId)
+    try {
+        const userId = m.sender.split('@')[0].replace(/\D/g, '')
+        const user = getOrCreateUser(userId)
 
-    generateDailyMissions(userId)
-    generateWeeklyMissions(userId)
-    initAchievements(userId)
+        generateDailyMissions(userId)
+        generateWeeklyMissions(userId)
+        initAchievements(userId)
 
-    if (args[0]) {
-        const missionId = args[0].toLowerCase()
-        const result = claimMissionReward(userId, missionId)
+        if (args && args[0]) {
+            const missionId = args[0].toLowerCase()
+            const result = claimMissionReward(userId, missionId)
 
-        if (!result.success) return conn.reply(m.chat, `❌ ${result.error}\n\nUsa *#misiones* para ver tus misiones activas.`, m)
+            if (!result.success) {
+                return await conn.reply(m.chat, `❌ ${result.error}\n\nUsa *#misiones* para ver tus misiones activas.`, m)
+            }
 
-        let txt = `🎉 *¡RECOMPENSA RECLAMADA!*\n\n`
-        txt += `📋 *${result.mission.nombre}*\n`
-        txt += `✅ Completada y reclamada\n\n`
-        txt += `💰 *Recompensas:*\n`
-        if (result.recompensa.money) txt += `  💵 $${result.recompensa.money.toLocaleString()}\n`
-        if (result.recompensa.exp) txt += `  ✨ ${result.recompensa.exp} EXP\n`
-        if (result.recompensa.item) {
-            const item = getItem(result.recompensa.item)
-            txt += `  🎁 ${item?.emoji || ''} ${item?.nombre || result.recompensa.item}\n`
+            let txt = `🎉 *¡RECOMPENSA RECLAMADA!*\n\n`
+            txt += `📋 *${result.mission.nombre}*\n`
+            txt += `✅ Completada y reclamada\n\n`
+            txt += `💰 *Recompensas:*\n`
+            if (result.recompensa.money) txt += `  💵 $${result.recompensa.money.toLocaleString()}\n`
+            if (result.recompensa.exp) txt += `  ✨ ${result.recompensa.exp} EXP\n`
+            if (result.recompensa.item) {
+                const item = getItem(result.recompensa.item)
+                txt += `  🎁 ${item?.emoji || ''} ${item?.nombre || result.recompensa.item}\n`
+            }
+            if (result.recompensa.titulo) txt += `  🏅 Título: ${result.recompensa.titulo}\n`
+
+            if (result.expResult?.leveledUp) {
+                txt += `\n🎉 *¡SUBISTE AL NIVEL ${result.expResult.level}!*`
+            }
+
+            return await conn.reply(m.chat, txt, m)
         }
-        if (result.recompensa.titulo) txt += `  🏅 Titulo: ${result.recompensa.titulo}\n`
 
-        if (result.expResult?.leveledUp) {
-            txt += `\n🎉 *¡SUBISTE AL NIVEL ${result.expResult.level}!*`
-        }
+        const txt = formatMissions(userId)
+        await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
 
-        return conn.reply(m.chat, txt, m)
+    } catch (error) {
+        console.error('Error en misiones:', error)
+        await conn.reply(m.chat, `❌ *Error al ejecutar el comando*\n\n💡 Intenta de nuevo. Si el problema persiste, contacta al administrador.\n\n📝 Detalle: ${error.message}`, m)
     }
-
-    const txt = formatMissions(userId)
-    await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
 }
 
 handler.help = ['misiones', 'missions', 'quest']
 handler.tags = ['economy', 'rpg']
 handler.command = ['misiones', 'missions', 'quest', 'mision']
+
 export default handler

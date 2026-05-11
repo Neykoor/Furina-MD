@@ -1,19 +1,6 @@
 import './src/database/config.js'
 import { start } from './lib/connection.js'
 import { autoStartSubBots } from './lib/serbot.js'
-export {
-    getFamilyData,
-    updateFamily,
-    proposeMarriage,
-    acceptMarriage,
-    divorce,
-    adoptChild,
-    removeChild,
-    buildFamilyTree,
-    formatFamilyTree,
-    getRelationLabel,
-    getFamilyStats
-} from './lib/family.js'
 
 // ─── INICIAR BOT PRINCIPAL ───
 start().catch(err => {

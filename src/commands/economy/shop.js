@@ -1,317 +1,190 @@
 import { getOrCreateUser, updateUser, formatMoney } from '../../../lib/users.js'
-import { getItem, TIENDA_ITEMS, MINERALES, PECES, MATERIALES, ANIMALES, RECETAS_CRAFTEO } from '../../../lib/economy/items.js'
+import { getItem, TIENDA_ITEMS, MINERALES, PECES, MATERIALES, ANIMALES } from '../../../lib/economy/items.js'
 import { addItem, removeItem, getInventory } from '../../../lib/economy/inventory.js'
 import { updateMissionProgress } from '../../../lib/economy/missions.js'
 import { updateStats } from '../../../lib/economy/stats.js'
 
-const MULTIPLICADOR_COMPRA = 1.5
-const MULTIPLICADOR_VENTA = 0.4
+const MULT_COMPRA = 1.5
+const MULT_VENTA  = 0.4
 
-function getPrecioCompra(itemId) {
-    const item = getItem(itemId)
-    if (!item) return null
-    
-    if (TIENDA_ITEMS[itemId]?.precio_compra) {
-        return TIENDA_ITEMS[itemId].precio_compra
-    }
-    
-    if (item.precio_compra) {
-        return item.precio_compra
-    }
-    
-    const base = item.valor || item.precio_venta || 1
-    return Math.floor(base * MULTIPLICADOR_COMPRA)
-}
-
-function getPrecioVenta(itemId) {
-    const item = getItem(itemId)
-    if (!item) return null
-    
-    if (TIENDA_ITEMS[itemId]?.precio_venta) {
-        return TIENDA_ITEMS[itemId].precio_venta
-    }
-    
-    if (item.precio_venta) {
-        return item.precio_venta
-    }
-    
-    const base = item.valor || 1
-    return Math.floor(base * MULTIPLICADOR_VENTA)
-}
-
-function getAllShopItems() {
+// Cache calculado una sola vez al cargar el módulo
+let _shopCache = null
+function getShopItems() {
+    if (_shopCache) return _shopCache
     const all = {}
-    
-    for (const [id, item] of Object.entries(TIENDA_ITEMS)) {
-        all[id] = { ...item, compra: getPrecioCompra(id), venta: getPrecioVenta(id) }
-    }
-    
-    for (const [id, item] of Object.entries(MINERALES)) {
-        if (!all[id]) {
-            all[id] = { ...item, compra: getPrecioCompra(id), venta: getPrecioVenta(id) }
+    for (const [id, item] of Object.entries({ ...TIENDA_ITEMS, ...MINERALES, ...PECES, ...MATERIALES, ...ANIMALES })) {
+        if (all[id]) continue
+        const base = item.valor || item.precio_venta || 1
+        all[id] = {
+            ...item,
+            compra: item.precio_compra ?? Math.floor(base * MULT_COMPRA),
+            venta:  item.precio_venta  ?? Math.floor(base * MULT_VENTA)
         }
     }
-    
-    for (const [id, item] of Object.entries(PECES)) {
-        if (!all[id]) {
-            all[id] = { ...item, compra: getPrecioCompra(id), venta: getPrecioVenta(id) }
-        }
-    }
-    
-    for (const [id, item] of Object.entries(MATERIALES)) {
-        if (!all[id]) {
-            all[id] = { ...item, compra: getPrecioCompra(id), venta: getPrecioVenta(id) }
-        }
-    }
-    
-    for (const [id, item] of Object.entries(ANIMALES)) {
-        if (!all[id]) {
-            all[id] = { ...item, compra: getPrecioCompra(id), venta: getPrecioVenta(id) }
-        }
-    }
-    
-    return all
+    return (_shopCache = all)
 }
 
-let handler = async (m, { conn, args }) => {
-    try {
-        const userId = m.sender.split('@')[0].replace(/\D/g, '')
-        const user = getOrCreateUser(userId)
-        const allItems = getAllShopItems()
+function findItem(search, pool) {
+    const s = search.toLowerCase()
+    return Object.keys(pool).find(id => {
+        const it = pool[id]
+        return it.nombre?.toLowerCase().includes(s) || id === s
+    })
+}
 
+const BONUS_LABELS = {
+    mineria: '⛏️ Minería', pesca: '🎣 Pesca', caza: '🏹 Caza', talar: '🪓 Talar',
+    luck: '🍀 Suerte', exp_bonus: '✨ EXP', defensa: '🛡️ Defensa', danio: '⚔️ Daño', charisma: '💎 Carisma'
+}
+
+const handler = async (m, { conn, args }) => {
+    try {
+        const userId  = m.sender.split('@')[0].replace(/\D/g, '')
+        const user    = getOrCreateUser(userId)
+        const shop    = getShopItems()
+
+        // ── Sin argumentos: mostrar tienda ──────────────────────────
         if (!args || args.length === 0) {
             const inventory = getInventory(userId)
-            let txt = `🏪 *TIENDA GENERAL*\n\n`
-            txt += `💰 Tu balance: ${formatMoney(user.money || 0)}\n\n`
+            let txt = `🏪 *TIENDA GENERAL*\n\n💰 Tu balance: ${formatMoney(user.money || 0)}\n\n`
 
-            let hasItems = false
+            // Inventario vendible
+            let hayVendibles = false
             for (const [id, data] of Object.entries(inventory)) {
                 if (data.equipado) continue
                 const item = getItem(id)
                 if (!item) continue
+                hayVendibles = true
+                const vu = shop[id]?.venta ?? Math.floor((item.valor || 1) * MULT_VENTA)
+                txt += `📦 ${item.emoji} *${item.nombre}* x${data.cantidad} — 💵 ${formatMoney(vu)}/u = ${formatMoney(vu * data.cantidad)}\n`
+            }
+            if (!hayVendibles) txt += `📭 No tienes items para vender.\n`
 
-                hasItems = true
-                const valorUnitario = getPrecioVenta(id)
-                const valorTotal = valorUnitario * data.cantidad
-                txt += `📦 ${item.emoji} *${item.nombre}* x${data.cantidad}\n`
-                txt += `   └ 💵 Venta: ${formatMoney(valorUnitario)} c/u = ${formatMoney(valorTotal)} total\n`
+            txt += `\n📋 *Comandos:*\n`
+            txt += `  #shop buy <item> <cantidad>\n  #shop sell <item> <cantidad/all>\n  #shop info <item>\n\n`
+
+            txt += `⚔️ *EQUIPAMIENTO:*\n`
+            for (const [id, item] of Object.entries(TIENDA_ITEMS))
+                txt += `  ${item.emoji} *${item.nombre}* (Nv.${item.nivel || 1}) — ${formatMoney(shop[id]?.compra)}\n`
+
+            for (const [cat, label, src] of [
+                ['⛏️', 'MINERALES', MINERALES],
+                ['🐟', 'PECES', PECES],
+                ['🌿', 'MATERIALES', MATERIALES]
+            ]) {
+                txt += `\n${cat} *${label}:*\n`
+                for (const item of Object.values(src).slice(0, 5))
+                    txt += `  ${item.emoji} ${item.nombre} — 💵 ${formatMoney(shop[item.id]?.compra)}\n`
             }
 
-            if (!hasItems) {
-                txt += `📭 No tienes items para vender.\n`
-            }
-
-            txt += `\n📋 *Comandos disponibles:*\n`
-            txt += `  #shop buy <item> <cantidad> - Comprar\n`
-            txt += `  #shop sell <item> <cantidad/all> - Vender\n`
-            txt += `  #shop info <item> - Ver info de item\n\n`
-
-            txt += `⚔️ *EQUIPAMIENTO EN VENTA:*\n`
-            for (const [id, item] of Object.entries(TIENDA_ITEMS)) {
-                txt += `  ${item.emoji} *${item.nombre}* (Nv.${item.nivel || 1}) - ${formatMoney(item.precio_compra || getPrecioCompra(id))}\n`
-            }
-
-            txt += `\n⛏️ *MINERALES:*\n`
-            const minerales = Object.values(MINERALES).slice(0, 6)
-            for (const item of minerales) {
-                txt += `  ${item.emoji} ${item.nombre} - 💵 ${formatMoney(getPrecioCompra(item.id))}\n`
-            }
-
-            txt += `\n🐟 *PECES:*\n`
-            const peces = Object.values(PECES).slice(0, 5)
-            for (const item of peces) {
-                txt += `  ${item.emoji} ${item.nombre} - 💵 ${formatMoney(getPrecioCompra(item.id))}\n`
-            }
-
-            txt += `\n🌿 *MATERIALES:*\n`
-            const materiales = Object.values(MATERIALES).slice(0, 5)
-            for (const item of materiales) {
-                txt += `  ${item.emoji} ${item.nombre} - 💵 ${formatMoney(getPrecioCompra(item.id))}\n`
-            }
-
-            txt += `\n💡 Usa *#shop info <nombre>* para ver más detalles`
-            return await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
+            txt += `\n💡 Usa *#shop info <nombre>* para detalles`
+            return conn.sendMessage(m.chat, { text: txt }, { quoted: m })
         }
 
         const action = args[0].toLowerCase()
 
+        // ── Info ─────────────────────────────────────────────────────
         if (action === 'info') {
-            const search = args.slice(1).join(' ').toLowerCase()
-            const itemId = Object.keys(allItems).find(id => {
-                const item = getItem(id)
-                return item && (item.nombre.toLowerCase().includes(search) || id === search)
-            })
+            const search = args.slice(1).join(' ')
+            const itemId = findItem(search, shop)
+            if (!itemId) return conn.sendMessage(m.chat, { text: `❌ Item no encontrado.` }, { quoted: m })
 
-            if (!itemId) {
-                return await conn.sendMessage(m.chat, { text: `❌ Item no encontrado. Usa *#shop* para ver los disponibles.` }, { quoted: m })
-            }
-
-            const item = getItem(itemId)
-            const compra = getPrecioCompra(itemId)
-            const venta = getPrecioVenta(itemId)
+            const item = getItem(itemId) || shop[itemId]
             const have = getInventory(userId)[itemId]?.cantidad || 0
 
-            let txt = `📦 *INFO DE ITEM*\n\n`
-            txt += `${item.emoji} *${item.nombre}*\n`
-            txt += `🔹 ID: ${item.id}\n`
-            txt += `💎 Rareza: ${item.rareza || 'común'}\n`
-            txt += `📊 Nivel: ${item.nivel || 1}\n`
-            txt += `⭐ Valor base: ${formatMoney(item.valor || 0)}\n\n`
-            txt += `💵 *Precio compra:* ${formatMoney(compra)}\n`
-            txt += `💵 *Precio venta:* ${formatMoney(venta)}\n`
-            txt += `📦 *Tienes:* ${have}\n\n`
-
+            let txt = `📦 *INFO — ${item.nombre}*\n\n`
+            txt += `${item.emoji}  ID: ${item.id}  |  Rareza: ${item.rareza || 'común'}  |  Nv. ${item.nivel || 1}\n`
+            txt += `💵 Compra: ${formatMoney(shop[itemId].compra)}  |  Venta: ${formatMoney(shop[itemId].venta)}\n`
+            txt += `📦 Tienes: ${have}\n`
             if (item.bonus) {
-                txt += `⚡ *Bonus:*\n`
-                for (const [key, val] of Object.entries(item.bonus)) {
-                    if (key === 'durabilidad') {
-                        txt += `  🔋 Durabilidad: ${val}\n`
-                        continue
-                    }
-                    const labels = { mineria: '⛏️ Minería', pesca: '🎣 Pesca', caza: '🏹 Caza', talar: '🪓 Talar', luck: '🍀 Suerte', exp_bonus: '✨ EXP', defensa: '🛡️ Defensa', danio: '⚔️ Daño', charisma: '💎 Carisma' }
-                    txt += `  ${labels[key] || key}: ${typeof val === 'number' && val < 10 ? `x${val.toFixed(1)}` : `+${val}`}\n`
+                txt += `\n⚡ *Bonus:*\n`
+                for (const [k, v] of Object.entries(item.bonus)) {
+                    if (k === 'durabilidad') { txt += `  🔋 Durabilidad: ${v}\n`; continue }
+                    txt += `  ${BONUS_LABELS[k] || k}: ${typeof v === 'number' && v < 10 ? `x${v.toFixed(1)}` : `+${v}`}\n`
                 }
             }
-
-            if (item.efecto) {
-                txt += `🧪 *Efecto:* ${JSON.stringify(item.efecto)}\n`
-            }
-
-            if (item.requiere) {
-                txt += `\n🔨 *Materiales para craftear:*\n`
-                for (const [matId, cant] of Object.entries(item.requiere)) {
-                    const mat = getItem(matId)
-                    txt += `  • ${mat?.emoji || ''} ${mat?.nombre || matId} x${cant}\n`
-                }
-            }
-
-            return await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
+            return conn.sendMessage(m.chat, { text: txt }, { quoted: m })
         }
 
+        // ── Comprar ──────────────────────────────────────────────────
         if (action === 'buy' || action === 'comprar') {
-            if (args.length < 3) {
-                return await conn.sendMessage(m.chat, { text: `❌ Uso: *#shop buy <item> <cantidad>*\nEjemplo: #shop buy pico_hierro 1` }, { quoted: m })
-            }
+            if (args.length < 3)
+                return conn.sendMessage(m.chat, { text: `❌ Uso: *#shop buy <item> <cantidad>*` }, { quoted: m })
 
-            const search = args[1].toLowerCase()
+            const search   = args[1]
             const cantidad = parseInt(args[2])
+            if (!cantidad || cantidad <= 0)
+                return conn.sendMessage(m.chat, { text: `❌ Cantidad inválida.` }, { quoted: m })
 
-            if (!cantidad || cantidad <= 0) {
-                return await conn.sendMessage(m.chat, { text: `❌ Cantidad inválida.` }, { quoted: m })
-            }
+            const itemId = findItem(search, shop)
+            if (!itemId) return conn.sendMessage(m.chat, { text: `❌ Item no encontrado.` }, { quoted: m })
 
-            const itemId = Object.keys(allItems).find(id => {
-                const item = getItem(id)
-                return item && (item.nombre.toLowerCase().includes(search) || id === search)
-            })
+            const item       = getItem(itemId) || shop[itemId]
+            const costo      = shop[itemId].compra * cantidad
 
-            if (!itemId) {
-                return await conn.sendMessage(m.chat, { text: `❌ Item no encontrado. Usa *#shop* para ver los disponibles.` }, { quoted: m })
-            }
-
-            const item = getItem(itemId)
-            const precioUnitario = getPrecioCompra(itemId)
-            const costoTotal = precioUnitario * cantidad
-
-            if ((user.money || 0) < costoTotal) {
-                return await conn.sendMessage(m.chat, { text: `❌ *No tienes suficiente dinero*\n\n💰 Necesitas: ${formatMoney(costoTotal)}\n💵 Tienes: ${formatMoney(user.money || 0)}` }, { quoted: m })
-            }
+            if ((user.money || 0) < costo)
+                return conn.sendMessage(m.chat, { text: `❌ *Sin fondos*\n💰 Necesitas: ${formatMoney(costo)}\n💵 Tienes: ${formatMoney(user.money || 0)}` }, { quoted: m })
 
             addItem(userId, itemId, cantidad)
-            updateUser(userId, { money: (user.money || 0) - costoTotal })
+            updateUser(userId, { money: (user.money || 0) - costo })
 
-            let txt = `🏪 *COMPRA EXITOSA*\n\n`
-            txt += `${item.emoji} *${item.nombre}* x${cantidad}\n`
-            txt += `💵 Precio unitario: ${formatMoney(precioUnitario)}\n`
-            txt += `💵 Total gastado: *-${formatMoney(costoTotal)}*\n\n`
-            txt += `💵 *Nuevo balance:* ${formatMoney((user.money || 0) - costoTotal)}`
-
-            await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
-            return
+            return conn.sendMessage(m.chat, {
+                text: `🏪 *COMPRA EXITOSA*\n\n${item.emoji} *${item.nombre}* x${cantidad}\n💵 Total: *-${formatMoney(costo)}*\n\n💵 *Balance:* ${formatMoney((user.money || 0) - costo)}`
+            }, { quoted: m })
         }
 
+        // ── Vender ───────────────────────────────────────────────────
         if (action === 'sell' || action === 'vender') {
-            if (args.length < 2) {
-                return await conn.sendMessage(m.chat, { text: `❌ Uso: *#shop sell <item> <cantidad/all>*\nEjemplo: #shop sell carbon 10` }, { quoted: m })
-            }
+            if (args.length < 2)
+                return conn.sendMessage(m.chat, { text: `❌ Uso: *#shop sell <item> <cantidad/all>*` }, { quoted: m })
 
-            let cantidad = 1
-            let itemName = args[1]
+            const lastArg  = args[args.length - 1]
+            const isAll    = lastArg === 'all'
+            const hasNum   = !isAll && !isNaN(lastArg) && args.length > 2
+            const itemName = (isAll || hasNum) ? args.slice(1, -1).join(' ') : args.slice(1).join(' ')
+            let cantidad   = isAll ? 'all' : (hasNum ? parseInt(lastArg) : 1)
 
-            const lastArg = args[args.length - 1]
-            if (lastArg === 'all') {
-                cantidad = 'all'
-                itemName = args.slice(1, -1).join(' ') || args[1]
-            } else if (!isNaN(lastArg) && args.length > 2) {
-                cantidad = parseInt(lastArg)
-                itemName = args.slice(1, -1).join(' ')
-            } else if (args.length === 2) {
-                itemName = args[1]
-                cantidad = 1
-            }
-
-            const search = itemName.toLowerCase()
+            const search    = itemName.toLowerCase()
             const inventory = getInventory(userId)
-
-            const itemId = Object.keys(inventory).find(id => {
-                const item = getItem(id)
-                return item && (item.nombre.toLowerCase().includes(search) || id === search)
+            const itemId    = Object.keys(inventory).find(id => {
+                const it = getItem(id)
+                return it && (it.nombre.toLowerCase().includes(search) || id === search)
             })
 
-            if (!itemId) {
-                return await conn.sendMessage(m.chat, { text: `❌ No tienes ese item en tu inventario.` }, { quoted: m })
-            }
+            if (!itemId) return conn.sendMessage(m.chat, { text: `❌ No tienes ese item.` }, { quoted: m })
 
             const item = getItem(itemId)
             const have = inventory[itemId]?.cantidad || 0
-
             if (cantidad === 'all') cantidad = have
+            if (!cantidad || cantidad <= 0)
+                return conn.sendMessage(m.chat, { text: `❌ Cantidad inválida.` }, { quoted: m })
+            if (have < cantidad)
+                return conn.sendMessage(m.chat, { text: `❌ Tienes ${have}, quieres vender ${cantidad}.` }, { quoted: m })
+            if (inventory[itemId].equipado && have <= cantidad)
+                return conn.sendMessage(m.chat, { text: `❌ Desequipa el item primero.` }, { quoted: m })
 
-            if (!cantidad || cantidad <= 0) {
-                return await conn.sendMessage(m.chat, { text: `❌ Cantidad inválida.` }, { quoted: m })
-            }
+            const ganancia = shop[itemId]?.venta * cantidad || Math.floor((item.valor || 1) * MULT_VENTA) * cantidad
+            const ok = removeItem(userId, itemId, cantidad)
+            if (!ok?.success) return conn.sendMessage(m.chat, { text: `❌ ${ok?.error || 'Error al vender'}` }, { quoted: m })
 
-            if (have < cantidad) {
-                return await conn.sendMessage(m.chat, { text: `❌ *No tienes suficiente*\n\n📦 Tienes: ${have}\n📦 Quieres vender: ${cantidad}` }, { quoted: m })
-            }
-
-            if (inventory[itemId].equipado && have <= cantidad) {
-                return await conn.sendMessage(m.chat, { text: `❌ *Desequipa el item primero*\n\nNo puedes vender items equipados.` }, { quoted: m })
-            }
-
-            const precioUnitario = getPrecioVenta(itemId)
-            const gananciaTotal = precioUnitario * cantidad
-
-            const removeResult = removeItem(userId, itemId, cantidad)
-            if (!removeResult.success) {
-                return await conn.sendMessage(m.chat, { text: `❌ ${removeResult.error}` }, { quoted: m })
-            }
-
-            updateUser(userId, { money: (user.money || 0) + gananciaTotal })
-
-            updateStats(userId, 'vender', { money: gananciaTotal, cantidad })
+            updateUser(userId, { money: (user.money || 0) + ganancia })
+            updateStats(userId, 'vender', { money: ganancia, cantidad })
             updateMissionProgress(userId, 'vender', cantidad)
 
-            let txt = `🏪 *VENTA EXITOSA*\n\n`
-            txt += `${item.emoji} *${item.nombre}* x${cantidad}\n`
-            txt += `💵 Precio unitario: ${formatMoney(precioUnitario)}\n`
-            txt += `💵 Total ganado: *+${formatMoney(gananciaTotal)}*\n\n`
-            txt += `💵 *Nuevo balance:* ${formatMoney((user.money || 0) + gananciaTotal)}`
-
-            await conn.sendMessage(m.chat, { text: txt }, { quoted: m })
-            return
+            return conn.sendMessage(m.chat, {
+                text: `🏪 *VENTA EXITOSA*\n\n${item.emoji} *${item.nombre}* x${cantidad}\n💵 Total: *+${formatMoney(ganancia)}*\n\n💵 *Balance:* ${formatMoney((user.money || 0) + ganancia)}`
+            }, { quoted: m })
         }
 
-        await conn.sendMessage(m.chat, { text: `❌ Acción no válida.\n\nUsa:\n  #shop buy <item> <cantidad>\n  #shop sell <item> <cantidad/all>\n  #shop info <item>` }, { quoted: m })
+        conn.sendMessage(m.chat, { text: `❌ Acción no válida.\n\n#shop buy <item> <cantidad>\n#shop sell <item> <cantidad/all>\n#shop info <item>` }, { quoted: m })
 
-    } catch (error) {
-        console.error('Error en shop:', error)
-        await conn.sendMessage(m.chat, { text: `❌ *Error al ejecutar el comando*\n\n💡 Intenta de nuevo. Si el problema persiste, contacta al administrador.\n\n📝 Detalle: ${error.message}` }, { quoted: m })
+    } catch (e) {
+        console.error('Error en shop:', e)
+        conn.sendMessage(m.chat, { text: `❌ Error: ${e.message}` }, { quoted: m })
     }
 }
 
-handler.help = ['shop <buy/sell/info> <item> <cantidad>']
-handler.tags = ['economy', 'rpg']
+handler.help    = ['shop <buy/sell/info> <item> <cantidad>']
+handler.tags    = ['economy', 'rpg']
 handler.command = ['shop', 'tienda', 'market', 'vender', 'sell']
-
 export default handler

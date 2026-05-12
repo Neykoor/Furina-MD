@@ -1,8 +1,6 @@
-
 import fetch from "node-fetch"
-import yts from "yt-search"
-import { Jimp } from "jimp"  // ← CORREGIDO: v1.6.0 usa named export
 import axios from "axios"
+import { Jimp } from "jimp"
 import fs from "fs"
 import { fileURLToPath } from "url"
 import path, { dirname } from "path"
@@ -10,116 +8,80 @@ import path, { dirname } from "path"
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-const MAX_FILE_SIZE = 500 * 1024 * 1024
-const AUDIO_DOC_THRESHOLD = 30 * 1024 * 1024
+// =================== CONFIGURACIÓN API KAZUMA ===================
+const API_BASE = "https://rest.kazuma.giize.com"
+const API_KEY = "kzm-BJyESIjG-FONfiuYH"
+
+const apiKazuma = {
+    search: async (query) => {
+        try {
+            const url = `${API_BASE}/api/search/youtube?apiKey=${API_KEY}&q=${encodeURIComponent(query)}`
+            const res = await axios.get(url, { timeout: 15000 })
+            const data = res.data
+
+            // Soporte flexible según la estructura que devuelva la API
+            const results = data.results || data.data || data.result || (Array.isArray(data) ? data : [data])
+            if (!results || !results.length) throw new Error("Sin resultados")
+
+            return results.map(v => ({
+                title: v.title || "Sin título",
+                url: v.url || v.link || `https://www.youtube.com/watch?v=${v.videoId || v.id}`,
+                thumbnail: v.thumbnail || v.image || v.thumb || `https://i.ytimg.com/vi/${v.videoId || v.id}/hqdefault.jpg`,
+                timestamp: v.duration || v.timestamp || v.length || "0:00",
+                views: v.views || v.viewCount || v.play_count || "0",
+                ago: v.ago || v.published || v.uploaded || "Desconocido",
+                author: { name: v.author || v.channel || v.uploader || "Desconocido" },
+                videoId: v.videoId || v.id || null
+            }))
+        } catch (e) {
+            throw new Error(`Error de búsqueda: ${e.message}`)
+        }
+    },
+
+    downloadAudio: async (videoUrl) => {
+        try {
+            const url = `${API_BASE}/api/download/ytaudio?url=${encodeURIComponent(videoUrl)}&apiKey=${API_KEY}`
+            const res = await axios.get(url, { timeout: 60000 })
+            const data = res.data
+
+            return {
+                status: true,
+                title: data.title || data.result?.title || "Sin título",
+                download: data.download || data.result?.download || data.url || data.link || data.dl,
+                thumbnail: data.thumbnail || data.result?.thumbnail || data.image,
+                author: data.author || data.result?.author || data.channel || "Desconocido"
+            }
+        } catch (e) {
+            return { status: false, error: e.message }
+        }
+    },
+
+    downloadVideo: async (videoUrl) => {
+        try {
+            const url = `${API_BASE}/api/download/ytvideo?url=${encodeURIComponent(videoUrl)}&apiKey=${API_KEY}`
+            const res = await axios.get(url, { timeout: 60000 })
+            const data = res.data
+
+            return {
+                status: true,
+                title: data.title || data.result?.title || "Sin título",
+                download: data.download || data.result?.download || data.url || data.link || data.dl,
+                thumbnail: data.thumbnail || data.result?.thumbnail || data.image,
+                author: data.author || data.result?.author || data.channel || "Desconocido"
+            }
+        } catch (e) {
+            return { status: false, error: e.message }
+        }
+    }
+}
 
 async function resizeImage(buffer, size = 300) {
     try {
         const image = await Jimp.read(buffer)
-        return await image.resize({ w: size, h: size }).getBuffer("image/jpeg")  // ← CORREGIDO: API v1.x
+        return await image.resize({ w: size, h: size }).getBuffer("image/jpeg")
     } catch {
         return buffer
     }
-}
-
-// =================== API SAVENOW ===================
-const savenowApi = {
-    name: "Savenow/Y2Down API",
-    key: "dfcb6d76f2f6a9894gjkege8a4ab232222",
-    agent: "Mozilla/5.0 (Android 13; Mobile; rv:146.0) Gecko/146.0 Firefox/146.0",
-    referer: "https://y2down.cc/enSB/",
-    ytdl: async function(url, format) {
-        try {
-            const initUrl = `https://p.savenow.to/ajax/download.php?copyright=0&format=${format}&url=${encodeURIComponent(url)}&api=${this.key}`
-            const init = await fetch(initUrl, { headers: { "User-Agent": this.agent, "Referer": this.referer } })
-            const data = await init.json()
-            if (!data.success) return { error: data.message || "Failed to start download" }
-            const id = data.id
-            const progressUrl = `https://p.savenow.to/api/progress?id=${id}`
-            let attempts = 0
-            while (attempts < 30) {
-                await new Promise(r => setTimeout(r, 2000))
-                attempts++
-                const response = await fetch(progressUrl, { headers: { "User-Agent": this.agent, "Referer": this.referer } })
-                const status = await response.json()
-                if (status.progress === 1000) return { title: data.title || data.info?.title, image: data.info?.image, link: status.download_url }
-            }
-            return { error: "Timeout" }
-        } catch (e) { return { error: e.message } }
-    },
-    download: async function(link, type = "audio") {
-        try {
-            const videoId = link.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1]
-            if (!videoId) return { status: false, error: "ID de video no válido" }
-            const videoInfo = await yts({ videoId })
-            let result
-            if (type === "audio") {
-                result = await this.ytdl(link, "mp3")
-                if (result.error) result = await this.ytdl(link, "m4a")
-            } else {
-                for (const fmt of ["720", "360", "480", "240", "144", "1080"]) {
-                    result = await this.ytdl(link, fmt)
-                    if (!result.error) break
-                }
-            }
-            if (result.error) return { status: false, error: result.error }
-            return {
-                status: true,
-                result: {
-                    title: result.title || videoInfo.title || "Sin título",
-                    author: videoInfo.author?.name || "Desconocido",
-                    views: videoInfo.views || "0",
-                    timestamp: videoInfo.timestamp || "0:00",
-                    ago: videoInfo.ago || "Desconocido",
-                    format: type === "audio" ? "mp3" : "mp4",
-                    download: result.link,
-                    thumbnail: result.image || videoInfo.thumbnail || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
-                }
-            }
-        } catch (e) { return { status: false, error: e.message } }
-    }
-}
-
-const amScraperApi = {
-    baseUrl: "https://scrapers.hostrta.win/scraper/24",
-    download: async (link, type = "audio") => {
-        try {
-            const videoId = link.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1]
-            if (!videoId) return { status: false, error: "ID no válido" }
-            const videoInfo = await yts({ videoId })
-            const response = await axios.get(`${amScraperApi.baseUrl}?url=${encodeURIComponent(link)}`, { timeout: 15000 })
-            if (!response.data || response.data.error) return { status: false, error: response.data?.error || "Error" }
-            const data = response.data
-            let downloadUrl = null, formatType = null
-            if (type === "audio") {
-                downloadUrl = data.audio?.url; formatType = "mp3"
-            } else {
-                downloadUrl = data.video?.url; formatType = "mp4"
-            }
-            if (!downloadUrl) return { status: false, error: "Formato no disponible" }
-            return {
-                status: true,
-                result: {
-                    title: videoInfo.title || "Sin título",
-                    author: videoInfo.author?.name || "Desconocido",
-                    views: videoInfo.views || "0",
-                    timestamp: videoInfo.timestamp || "0:00",
-                    ago: videoInfo.ago || "Desconocido",
-                    format: formatType,
-                    download: downloadUrl,
-                    thumbnail: videoInfo.thumbnail || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
-                }
-            }
-        } catch (e) { return { status: false, error: e.message } }
-    }
-}
-
-async function downloadWithFallback(url, type = 'audio') {
-    let result = await savenowApi.download(url, type)
-    if (result.status) return result
-    result = await amScraperApi.download(url, type)
-    if (result.status) return result
-    return { status: false, error: "No se pudo descargar el contenido." }
 }
 
 function formatSize(bytes) {
@@ -135,6 +97,25 @@ async function getSize(url) {
         const res = await axios.head(url, { timeout: 10000 })
         return parseInt(res.headers['content-length'], 10) || 0
     } catch { return 0 }
+}
+
+async function downloadWithFallback(url, type = 'audio') {
+    const result = type === 'audio' 
+        ? await apiKazuma.downloadAudio(url) 
+        : await apiKazuma.downloadVideo(url)
+
+    if (!result.status) return { status: false, error: result.error || "Error en la descarga" }
+
+    return {
+        status: true,
+        result: {
+            title: result.title,
+            author: result.author,
+            format: type === 'audio' ? 'mp3' : 'mp4',
+            download: result.download,
+            thumbnail: result.thumbnail
+        }
+    }
 }
 
 // =================== INFO CANAL ===================
@@ -167,7 +148,7 @@ async function getRcanal() {
 
 // =================== HANDLER PRINCIPAL ===================
 const handler = async (m, { conn, text, usedPrefix, command }) => {
-    
+
     // ─── COMANDOS DIRECTOS (ytmp3, ytmp4, etc) ───
     if (['ytmp3', 'ytmp4', 'ytmp3doc', 'ytmp4doc'].includes(command)) {
         return await handleDirectDownload(m, conn, text, command, usedPrefix)
@@ -195,12 +176,13 @@ const handler = async (m, { conn, text, usedPrefix, command }) => {
     await m.react('🔍')
 
     try {
-        const search = await yts(text)
-        const videoInfo = search.all?.[0]
+        const searchResults = await apiKazuma.search(text)
+        const videoInfo = searchResults[0]
+
         if (!videoInfo) throw '❗ ɴᴏ sᴇ ᴇɴᴄᴏɴᴛʀᴀʀᴏɴ ʀᴇsᴜʟᴛᴀᴅᴏs'
 
         const { title, thumbnail, timestamp, views, ago, url, author } = videoInfo
-        const vistas = views?.toLocaleString?.() || 'Desconocido'
+        const vistas = typeof views === 'number' ? views.toLocaleString() : views
         const rcanal = await getRcanal()
 
         // Guardar en memoria para respuestas de botones
@@ -310,7 +292,7 @@ const handler = async (m, { conn, text, usedPrefix, command }) => {
 // =================== RESPUESTA A BOTONES ===================
 async function handleButtonResponse(m, conn, command) {
     const data = global.descargasTemp?.[m.sender]
-    
+
     if (!data) {
         return conn.sendMessage(m.chat, {
             text: '❌ La búsqueda expiró. Usa #play de nuevo.'
@@ -326,7 +308,7 @@ async function handleButtonResponse(m, conn, command) {
 
     const { url, title, thumbnail } = data
     const rcanal = await getRcanal()
-    
+
     await m.react('⏳')
 
     try {
@@ -356,12 +338,12 @@ async function handleButtonResponse(m, conn, command) {
                 fileName: `${dl.result.title}.mp3`
             }, { quoted: fkontak })
         }
-        
+
         // ─── VIDEO NORMAL ───
         else if (command === 'play_video') {
             const size = await getSize(dl.result.download)
             if (size > 200 * 1024 * 1024) throw `ׅㅤ𓏸𓈒ㅤׄ 📦 *ᴅᴇᴍᴀsɪᴀᴅᴏ ɢʀᴀɴᴅᴇ* :: ${formatSize(size)}\nׅㅤ𓏸𓈒ㅤׄ 💡 *ᴜsᴀ* :: #play_videodoc`
-            
+
             await conn.sendMessage(m.chat, {
                 video: { url: dl.result.download },
                 mimetype: 'video/mp4',
@@ -369,12 +351,12 @@ async function handleButtonResponse(m, conn, command) {
                 jpegThumbnail: thumbResized
             }, { quoted: fkontak })
         }
-        
+
         // ─── AUDIO DOCUMENTO ───
         else if (command === 'play_audiodoc') {
             const size = await getSize(dl.result.download)
             if (size > 600 * 1024 * 1024) throw `ׅㅤ𓏸𓈒ㅤׄ 📦 *ᴅᴇᴍᴀsɪᴀᴅᴏ ɢʀᴀɴᴅᴇ* :: ${formatSize(size)}`
-            
+
             await conn.sendMessage(m.chat, {
                 document: { url: dl.result.download },
                 mimetype: 'audio/mpeg',
@@ -383,12 +365,12 @@ async function handleButtonResponse(m, conn, command) {
                 caption: `🎵 *${dl.result.title}*\n📦 ${formatSize(size)}`
             }, { quoted: fkontak })
         }
-        
+
         // ─── VIDEO DOCUMENTO ───
         else if (command === 'play_videodoc') {
             const size = await getSize(dl.result.download)
             if (size > 600 * 1024 * 1024) throw `ׅㅤ𓏸𓈒ㅤׄ 📦 *ᴅᴇᴍᴀsɪᴀᴅᴏ ɢʀᴀɴᴅᴇ* :: ${formatSize(size)}`
-            
+
             await conn.sendMessage(m.chat, {
                 document: { url: dl.result.download },
                 mimetype: 'video/mp4',
@@ -418,21 +400,34 @@ async function handleDirectDownload(m, conn, text, command, usedPrefix) {
     await m.react('⏳')
 
     try {
-        let url, title, thumbnail, author
+        let url, title, thumbnail, author, timestamp, views, ago
 
         if (/youtube.com|youtu.be/.test(text)) {
-            const id = text.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1]
-            if (!id) throw '❌ ᴜʀʟ ɪɴᴠᴀ́ʟɪᴅᴀ'
-            const s = await yts({ videoId: id })
-            url = `https://www.youtube.com/watch?v=${id}`
-            title = s.title || "Sin título"
-            thumbnail = s.thumbnail
-            author = s.author?.name || "Desconocido"
+            url = text.trim()
+            // Obtener info básica para mostrar
+            try {
+                const searchResults = await apiKazuma.search(url)
+                const v = searchResults.find(x => x.url.includes(url.match(/[a-zA-Z0-9_-]{11}/)?.[0])) || searchResults[0]
+                if (v) {
+                    title = v.title
+                    thumbnail = v.thumbnail
+                    author = v.author?.name
+                    timestamp = v.timestamp
+                    views = v.views
+                    ago = v.ago
+                }
+            } catch {
+                title = "YouTube Video"
+                thumbnail = `https://i.ytimg.com/vi/${url.match(/[a-zA-Z0-9_-]{11}/)?.[0]}/hqdefault.jpg`
+                author = "Desconocido"
+            }
         } else {
-            const s = await yts(text)
-            if (!s.videos.length) throw "❌ ɴᴏ sᴇ ᴇɴᴄᴏɴᴛʀᴀʀᴏɴ ʀᴇsᴜʟᴛᴀᴅᴏs"
-            const v = s.videos[0]
-            url = v.url; title = v.title; thumbnail = v.thumbnail; author = v.author?.name || "Desconocido"
+            const searchResults = await apiKazuma.search(text)
+            if (!searchResults.length) throw "❌ ɴᴏ sᴇ ᴇɴᴄᴏɴᴛʀᴀʀᴏɴ ʀᴇsᴜʟᴛᴀᴅᴏs"
+            const v = searchResults[0]
+            url = v.url; title = v.title; thumbnail = v.thumbnail; 
+            author = v.author?.name || "Desconocido"; 
+            timestamp = v.timestamp; views = v.views; ago = v.ago
         }
 
         const thumbBuffer = await (await fetch(thumbnail)).buffer()
@@ -470,12 +465,12 @@ async function handleDirectDownload(m, conn, text, command, usedPrefix) {
                 fileName: `${dl.result.title}.mp3`
             }, { quoted: fkontak })
         }
-        
+
         // ─── YTMP4 ───
         else if (command === 'ytmp4') {
             const size = await getSize(dl.result.download)
             if (size > 200 * 1024 * 1024) throw `ׅㅤ𓏸𓈒ㅤׄ 📦 *ᴅᴇᴍᴀsɪᴀᴅᴏ ɢʀᴀɴᴅᴇ* :: ${formatSize(size)}\nׅㅤ𓏸𓈒ㅤׄ 💡 *ᴜsᴀ* :: ${usedPrefix}ytmp4doc`
-            
+
             await conn.sendMessage(m.chat, {
                 video: { url: dl.result.download },
                 mimetype: 'video/mp4',
@@ -483,12 +478,12 @@ async function handleDirectDownload(m, conn, text, command, usedPrefix) {
                 jpegThumbnail: thumbResized
             }, { quoted: fkontak })
         }
-        
+
         // ─── YTMP3DOC ───
         else if (command === 'ytmp3doc') {
             const size = await getSize(dl.result.download)
             if (size > 600 * 1024 * 1024) throw `ׅㅤ𓏸𓈒ㅤׄ 📦 *ᴅᴇᴍᴀsɪᴀᴅᴏ ɢʀᴀɴᴅᴇ* :: ${formatSize(size)}`
-            
+
             await conn.sendMessage(m.chat, {
                 document: { url: dl.result.download },
                 mimetype: 'audio/mpeg',
@@ -497,12 +492,12 @@ async function handleDirectDownload(m, conn, text, command, usedPrefix) {
                 caption: `🎵 *${dl.result.title}*\n📦 ${formatSize(size)}`
             }, { quoted: fkontak })
         }
-        
+
         // ─── YTMP4DOC ───
         else if (command === 'ytmp4doc') {
             const size = await getSize(dl.result.download)
             if (size > 600 * 1024 * 1024) throw `ׅㅤ𓏸𓈒ㅤׄ 📦 *ᴅᴇᴍᴀsɪᴀᴅᴏ ɢʀᴀɴᴅᴇ* :: ${formatSize(size)}`
-            
+
             await conn.sendMessage(m.chat, {
                 document: { url: dl.result.download },
                 mimetype: 'video/mp4',
